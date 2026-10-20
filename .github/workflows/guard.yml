@@ -1,0 +1,31 @@
+# Board row F0. Seconds; runs on every push. Checks the board and that no borrowed media got in.
+name: Guard
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+# A newer push stops the older run of this workflow on the same branch.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  guard:
+    name: Board, assets, tools
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: WORK.md and notes/reference.md follow AGENTS.md sections 6-11 and 14
+        run: python tools/check_board.py
+      - name: No media outside assets/, every asset credited (AGENTS.md section 13)
+        run: python tools/check_assets.py
+      - name: Our Python tools compile
+        run: python -m compileall -q tools

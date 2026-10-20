@@ -1,0 +1,44 @@
+# Allowlist: ignore everything, then add back only what was written for this project.
+# No pictures, clips, models or sounds of Levers and Chests may be committed (AGENTS.md section 13);
+# keep your reference board outside the repo.
+/*
+!/.gitignore
+!/.gitattributes
+!/README.md
+!/AGENTS.md
+!/WORK.md
+!/CLAUDE.md
+!/.github/
+!/notes/
+!/docs/
+!/tools/
+!/assets/
+!/lac-rs/
+
+# notes and docs: text only (pictures are linked from notes/media.md, never copied)
+/notes/**/*.png
+/notes/**/*.jpg
+/notes/**/*.jpeg
+/notes/**/*.gif
+/notes/**/*.webp
+/notes/**/*.mp4
+/docs/**/*.png
+/docs/**/*.jpg
+/docs/**/*.jpeg
+/docs/**/*.gif
+/docs/**/*.webp
+/docs/**/*.mp4
+
+# tools: our scripts only
+__pycache__/
+
+# lac-rs: source only
+/lac-rs/target/
+/lac-rs/**/target/
+/lac-rs/*.exe
+/lac-rs/*.png
+/lac-rs/*.mp4
+/lac-rs/settings.ron
+/lac-rs/recordings/
+
+*.bak
