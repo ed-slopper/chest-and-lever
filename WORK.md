@@ -20,8 +20,6 @@ them blocks the first engine rows.
 
 | ID | Task | Area | Needs | Who | Notes |
 |---|---|---|---|---|---|
-| F0 | The board, the rules and the CI guard: `WORK.md`, `AGENTS.md`, `CLAUDE.md`, `README.md`, `tools/check_board.py`, `tools/check_assets.py`, `.github/workflows/guard.yml`, the allow-list `.gitignore` | any | | ed-slopper/wren (2026-10-19) | After the structure of ed-slopper/SSX-TRICKY-RUST-REWRITE |
-| F3 | The reference: `notes/reference.md` (facts R1-R59, gaps R70-R78), `notes/media.md` (every known picture and clip, as links), `docs/design-notes/README.md` | any | | ed-slopper/wren (2026-10-19) | From the research report of 2026-10-19 |
 | F1 | The Cargo workspace `lac-rs/`: the crate `lac-sim` (`lac-rs/sim/`, no Bevy, no I/O) and the app `lac` (`lac-rs/`, Bevy 0.20, versions pinned in `Cargo.lock`). The app opens a window, clears it to a colour from the sim, quits on Esc; `cargo test -p lac-sim` runs one test. Window title from F5 when decided, `chest-and-lever` until then | unowned | | | [est] small. Linux packages in AGENTS.md §15. Keep `lac-sim` free of Bevy for good: it is what F4 replays |
 | F2 | CI for the code: `.github/workflows/lac-rs.yml`, run when `lac-rs/**` changes or by hand: `cargo test -p lac-sim` (fast), then `cargo clippy` and `cargo build` for the app (Linux, with the packages Bevy needs, `Swatinem/rust-cache`) | unowned | F1 | | The Guard workflow (F0) already runs on every push |
 | F9 | Random numbers in `lac-sim`: one run seed (shown and typed as text, so runs can be shared) split into named streams (`levelgen`, `loot`, `ai`, `combat`, ...), so adding a draw in one system never shifts another. Mersenne Twister (`rand_mt`) as the record uses (R25); tests with fixed seeds and expected values | unowned | F1 | | R25, R44 |
@@ -109,7 +107,10 @@ them blocks the first engine rows.
 
 | ID | Task | Section | Who | Date | Commit |
 |---|---|---|---|---|---|
+| F3 | The reference: notes/reference.md (facts R1-R59, gaps R70-R78), notes/media.md, docs/design-notes/README.md | P0 | ed-slopper/wren | 2026-10-19 | 1ef7013 |
+| F0 | The board, the rules and the CI guard: WORK.md, AGENTS.md, CLAUDE.md, README.md, tools/check_board.py, tools/check_assets.py, .github/workflows/guard.yml, the allow-list .gitignore | P0 | ed-slopper/wren | 2026-10-19 | 1ef7013 |
 
 ## Changes to the board
 
 - 2026-10-19 ed-slopper/wren: board, rules and reference made, after the structure of ed-slopper/SSX-TRICKY-RUST-REWRITE (rows F0-F9, E1-E11, G1-G13, C1-C10, X1-X6, L1-L6); F0 and F3 claimed.
+- 2026-10-19 ed-slopper/wren: F0 and F3 done (1ef7013).
