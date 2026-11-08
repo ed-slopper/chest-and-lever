@@ -68,6 +68,22 @@
     "wand_sleep": (name: "wand of slumber", kind: Wand(effect: Sleep, charges: "1d4+3"), depth: (1, 8), weight: 4, icon: "wand"),
     "wand_nothing": (name: "wand of nothing", kind: Wand(effect: Nothing, charges: "1d6"), depth: (1, 8), weight: 2, icon: "wand"),
 
+    // ---- wards: resistances stack, and past 100% the harm heals (R60, broken on purpose)
+    "ring_fire_ward": (name: "ring of fire ward", kind: Ring(effect: Resist(Fire, 60)), depth: (2, 8), weight: 4, icon: "ring"),
+    "ring_venom_ward": (name: "ring of venom ward", kind: Ring(effect: Resist(Poison, 75)), depth: (1, 8), weight: 4, icon: "ring"),
+    "amulet_frost_ward": (name: "amulet of frost ward", kind: Amulet(effect: Resist(Cold, 60)), depth: (3, 8), weight: 3, icon: "amulet"),
+    "boots_grounding": (name: "grounding boots", kind: Armor(slot: Feet, ac: 1, effect: Some(Resist(Lightning, 60))), depth: (3, 8), weight: 3, icon: "boots"),
+
+    // ---- the ward-iron set: two pieces on one member give +2 AC, three give +4 (R60: set items)
+    "ward_helm": (name: "ward-iron helm", kind: Armor(slot: Head, ac: 2), depth: (4, 8), weight: 2, icon: "helm", set: Some("ward-iron")),
+    "ward_mail": (name: "ward-iron mail", kind: Armor(slot: Body, ac: 5), depth: (4, 8), weight: 2, icon: "armor", set: Some("ward-iron")),
+    "ward_shield": (name: "ward-iron shield", kind: Armor(slot: Shield, ac: 2), depth: (4, 8), weight: 2, icon: "shield", set: Some("ward-iron")),
+
+    // ---- uniques: rare, always +3, never cursed (R60)
+    "gravecleaver": (name: "Gravecleaver", kind: Weapon(damage: "1d12+1", two_handed: true, stat: Str), depth: (5, 8), weight: 1, icon: "axe", unique: true),
+    "lantern_shield": (name: "the Lantern Shield", kind: Armor(slot: Shield, ac: 2, effect: Some(SeeSecrets)), depth: (3, 8), weight: 1, icon: "shield", unique: true),
+    "emberheart": (name: "Emberheart", kind: Amulet(effect: Resist(Fire, 120)), depth: (6, 8), weight: 1, icon: "amulet", unique: true),
+
     // ---- keys, gold, the crown
     "iron_key": (name: "iron key", kind: Key(key: Iron), depth: (1, 8), weight: 0, icon: "key"),
     "bronze_key": (name: "bronze key", kind: Key(key: Bronze), depth: (1, 8), weight: 0, icon: "key"),

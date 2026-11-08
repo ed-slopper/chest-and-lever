@@ -28,3 +28,8 @@ Rows G8, C4. Code: `lac-rs/sim/src/monster.rs`, `sim.rs` (`monsters_act`); data
   living (not the undead) flee at a quarter of their hit points, half the time.
 - Walkers can drop one tile, spiders and beetles can climb one, and wisps fly.
 - In the spider-free mode (Options), every spider spawns as a rock beetle.
+
+## More of our own (2026-11-08, after R62's list of creature kinds)
+
+- Cave bat (fast flier, weak), carrion crow (small flier, flees early), bog slime (slow, poisons), dire wolf
+  (fast, hits hard). Common creature kinds, in our own voxel designs; nothing traced from the record's models.

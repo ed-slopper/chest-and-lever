@@ -9,6 +9,29 @@ use crate::world::KeyKind;
 use serde::{Deserialize, Serialize};
 use std::collections::BTreeMap;
 
+/// Kinds of harm. OURS, after the design notes ed-slopper shared (R60): resistances stack and are exploitable.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, PartialOrd, Ord, Serialize, Deserialize)]
+pub enum Element {
+    #[default]
+    Physical,
+    Fire,
+    Cold,
+    Poison,
+    Lightning,
+}
+
+impl Element {
+    pub fn name(self) -> &'static str {
+        match self {
+            Element::Physical => "physical",
+            Element::Fire => "fire",
+            Element::Cold => "cold",
+            Element::Poison => "poison",
+            Element::Lightning => "lightning",
+        }
+    }
+}
+
 /// What a potion, scroll, wand, ring or amulet does. OURS: R12 asks for cursed items and "ridiculously
 /// broken" combinations; R74 is a gap. This list is our design.
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
@@ -50,6 +73,8 @@ pub enum Effect {
     Jumping,
     /// Secret walls show themselves when the party stands next to them.
     SeeSecrets,
+    /// Percent less harm of a kind while worn; past 100 the harm heals (R60: exploitable on purpose).
+    Resist(Element, i16),
     /// Every fallen member stands up again at a quarter of their hit points (board row G15).
     Raise,
     /// No effect at all (a joke the dungeon plays).
@@ -165,6 +190,12 @@ pub struct ItemDef {
     pub cursed: u32,
     /// Which icon the app draws (`sword`, `potion`, ...).
     pub icon: String,
+    /// Pieces of a set: two or more worn by one member give +2 AC for each piece past the first (R60).
+    #[serde(default)]
+    pub set: Option<String>,
+    /// A unique item: found once at most, always +3 and never cursed (R60).
+    #[serde(default)]
+    pub unique: bool,
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
@@ -207,6 +238,9 @@ pub struct MonsterDef {
     pub special: bool,
     /// The voxel model the app builds for it.
     pub model: String,
+    /// The kind of harm its attacks do.
+    #[serde(default)]
+    pub element: Element,
 }
 
 /// A loot table: categories by weight.

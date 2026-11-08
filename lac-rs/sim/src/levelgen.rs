@@ -118,14 +118,14 @@ impl<'a> Gen<'a> {
                 break;
             }
             let hall = big && self.rooms.len() == 1;
-            let (w, d) = if hall { (11, 11) } else { (self.r.range(4, 9), self.r.range(4, 9)) };
+            let (w, d) = if hall { (11, 11) } else { (self.r.range(5, 11), self.r.range(5, 11)) };
             let room = Room {
                 x0: self.r.range(2, SIZE.x - w - 2),
                 z0: self.r.range(2, SIZE.z - d - 2),
                 w,
                 d,
                 g: base + self.r.range(-1, 1),
-                h: if hall { 5 } else { self.r.range(3, 5) },
+                h: if hall { 5 } else { self.r.range(4, 6) },
             };
             if self.rooms.iter().any(|o| o.overlaps(&room, 2)) {
                 continue;
@@ -873,7 +873,7 @@ impl<'a> Gen<'a> {
 
 fn rooms(c: &Content, r: Mt19937, depth: u8, options: RunOptions) -> Option<Level> {
     let mut g = Gen::new(c, r, depth, options);
-    let want = g.r.range(8, 12) as usize;
+    let want = g.r.range(7, 10) as usize;
     g.place_rooms(want, 4, depth >= FINAL_DEPTH);
     if g.rooms.len() < 5 {
         return None;
@@ -1101,6 +1101,11 @@ pub fn roll_item(c: &Content, cat: &str, depth: u8, r: &mut Mt19937) -> Option<I
 pub fn make_item(c: &Content, id: &str, depth: u8, r: &mut Mt19937) -> Item {
     let def = c.item(id);
     let mut it = Item::new(id);
+    if def.unique {
+        it.enchant = 3;
+        it.known = false;
+        return it;
+    }
     match &def.kind {
         ItemKind::Weapon { .. } | ItemKind::Armor { .. } => {
             it.known = false;

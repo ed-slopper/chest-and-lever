@@ -93,6 +93,17 @@ ed-slopper/wren; the long-form write-up with pictures is the research report in 
 | R58 | A rendering engineer, Daryl Zuniga, on the team | 2025-05 | same | 3 | unconfirmed |
 | R59 | Multiplayer considered and set aside | 2025-05 | same | 3 | unconfirmed |
 
+## Shared by the project (images in a chat, origin not yet linked)
+
+ed-slopper shared these on 2026-11-08; they look like Notch's own notes and screenshots, but until a post is
+found and linked they count as leads (trust 3). The pictures themselves stay out of the repo.
+
+| ID | Fact | Date | Source | Trust | Status |
+|---|---|---|---|---|---|
+| R60 | Design notes: a first-person roguelike "in the old school sense", ADOM meets Ultima Underworld; random, tile-based dungeons; a minimap the player can make notes on; an overworld between key locations (maybe seamless); lots of stats, exploitable on purpose (more than 100% protection from ice heals you), set items and unique items; danger that is always avoidable; permadeath; cursed items and mimics that teach good habits | 2026-11-08 | image shared by ed-slopper | 3 | unconfirmed |
+| R61 | Interface in later clips: the party on the right as a 2×2 grid of cards, each with a name, four item slots, a portrait and two bars; a grid inventory below on a stone panel; a wide 3D view on the left with health bars over monsters | 2026-11-08 | images shared by ed-slopper | 3 | unconfirmed |
+| R62 | A monster line-up of voxel models: a slime, a beetle-like brute, a zombie, several humanoids, a cloaked figure, a mimic, a bat, a crow and a wolf among them | 2026-11-08 | image shared by ed-slopper | 3 | unconfirmed (we design our own, AGENTS.md §13) |
+
 ## Gaps: what the record does not show (ours to design)
 
 | ID | Gap | Board row |

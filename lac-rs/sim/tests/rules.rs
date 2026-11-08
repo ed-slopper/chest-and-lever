@@ -264,3 +264,36 @@ fn raise_dead_brings_back_the_fallen() {
     assert!(s.state.party[1].alive());
     assert_eq!(s.state.party[1].hp, (s.state.party[1].max_hp / 4).max(1));
 }
+
+#[test]
+fn more_than_full_fire_ward_makes_lava_heal() {
+    // R60: exploitable stats; two fire wards (60 + 120) pass 100% and lava heals
+    let mut s = test_sim();
+    let m = &mut s.state.party[0];
+    m.equip.insert(lac_sim::content::Slot::Ring, lac_sim::item::Item::new("ring_fire_ward"));
+    m.equip.insert(lac_sim::content::Slot::Amulet, lac_sim::item::Item::new("emberheart"));
+    m.hp = 5;
+    for i in 1..4 {
+        s.state.party[i].hp = 1000;
+        s.state.party[i].max_hp = 1000;
+    }
+    s.state.level.world.set(IVec3::new(5, 1, 5), lac_sim::Cell::Lava);
+    s.tick(Action::Wait);
+    assert!(s.state.party[0].hp > 5, "lava healed the warded fighter, hp {}", s.state.party[0].hp);
+    assert!(s.state.party[1].hp < 1000, "and burned the others");
+}
+
+#[test]
+fn set_pieces_add_armour() {
+    let c = Content::builtin();
+    let mut s = test_sim();
+    let m = &mut s.state.party[0];
+    m.equip.clear();
+    let bare = m.ac(&c);
+    m.equip.insert(lac_sim::content::Slot::Head, lac_sim::item::Item::new("ward_helm"));
+    let one = m.ac(&c);
+    m.equip.insert(lac_sim::content::Slot::Body, lac_sim::item::Item::new("ward_mail"));
+    let two = m.ac(&c);
+    assert_eq!(one, bare + 2);
+    assert_eq!(two, one + 5 + 2, "the second piece adds its own AC and the set bonus");
+}

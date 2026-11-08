@@ -2,7 +2,7 @@
 //! REF R13: party-based. OURS (R71 is a gap): four classes, five attributes, levels from shared experience,
 //! a shared pack, two rows (members 0 and 1 in front, 2 and 3 behind).
 
-use crate::content::{Content, Effect, ItemKind, Slot, Stat};
+use crate::content::{Content, Effect, Element, ItemKind, Slot, Stat};
 use crate::dice::Dice;
 use crate::item::Item;
 use serde::{Deserialize, Serialize};
@@ -173,9 +173,40 @@ impl Character {
         })
     }
 
-    /// Armour class, ascending: 10 + DEX modifier + armour + enchantments + rings of protection.
+    /// Percent resistance to a kind of harm, from everything worn; it may pass 100 (R60).
+    pub fn resist(&self, content: &Content, el: Element) -> i32 {
+        let mut r = 0;
+        for it in self.equip.values() {
+            let e = match &content.item(&it.def).kind {
+                ItemKind::Ring { effect } | ItemKind::Amulet { effect } => Some(effect),
+                ItemKind::Armor { effect: Some(effect), .. } => Some(effect),
+                _ => None,
+            };
+            if let Some(Effect::Resist(k, v)) = e
+                && *k == el {
+                    r += *v as i32;
+                }
+        }
+        r
+    }
+
+    /// Worn pieces of each set.
+    pub fn set_pieces(&self, content: &Content) -> BTreeMap<String, u32> {
+        let mut sets = BTreeMap::new();
+        for it in self.equip.values() {
+            if let Some(s) = &content.item(&it.def).set {
+                *sets.entry(s.clone()).or_insert(0) += 1;
+            }
+        }
+        sets
+    }
+
+    /// Armour class, ascending: 10 + DEX modifier + armour + enchantments + rings of protection + set bonuses.
     pub fn ac(&self, content: &Content) -> i32 {
         let mut ac = 10 + self.mod_of(Attr::Dex);
+        for n in self.set_pieces(content).values() {
+            ac += 2 * (*n as i32 - 1).max(0);
+        }
         for it in self.equip.values() {
             match &content.item(&it.def).kind {
                 ItemKind::Armor { ac: a, effect, .. } => {

@@ -3448,9 +3448,17 @@ name = "lac"
 version = "0.1.0"
 dependencies = [
  "bevy",
+ "lac-mesh",
  "lac-sim",
  "ron",
  "serde",
+]
+
+[[package]]
+name = "lac-mesh"
+version = "0.1.0"
+dependencies = [
+ "lac-sim",
 ]
 
 [[package]]

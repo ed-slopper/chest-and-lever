@@ -22,3 +22,14 @@ Rows G5, C5. Code: `lac-rs/sim/src/item.rs`, `content.rs`; data `lac-rs/assets/c
   - Levitation floats over lava moats.
   - A wand of digging cuts through anything but bedrock, secret walls included.
   - Rings of teleportitis jump the party about at random.
+
+## After the design notes (R60)
+
+- Harm has a kind: physical, fire, cold, poison, lightning. Wards (rings, an amulet, boots) give percent
+  resistance; it stacks across everything one member wears, and past 100% the harm heals instead. Ring of fire
+  ward (60%) plus Emberheart (120%) lets a member bathe in lava. Spiders and slimes poison, wisps and the Warden
+  strike with cold, fire traps and lava burn.
+- Set items: the ward-iron helm, mail and shield. Two pieces on one member give +2 AC, three give +4, on top of
+  their own armour.
+- Uniques: Gravecleaver, the Lantern Shield (sees secret walls), Emberheart. Rare (weight 1), always +3, never
+  cursed. They are not yet limited to one per run.

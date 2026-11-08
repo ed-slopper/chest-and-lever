@@ -3,7 +3,7 @@
 //! REF R27: time stands still while no action is queued. The sim never advances on its own; the app pushes
 //! actions and steps it. REF R13: turn-based. REF R24: actions, not keys, are what the sim sees.
 
-use crate::content::{Content, Effect, ItemKind, OnHit, Slot};
+use crate::content::{Content, Effect, Element, ItemKind, OnHit, Slot};
 use crate::dice::Dice;
 use crate::geom::{Dir, IVec3};
 use crate::item::{Item, Knowledge};
@@ -51,6 +51,9 @@ pub enum Action {
     PickUp,
     /// Free: swap two members (front row is 0 and 1).
     Swap { a: u8, b: u8 },
+    /// Free: put a mark on the automap at the party's tile (0 takes it away). R60: a minimap the player can
+    /// make notes on.
+    Note { mark: u8 },
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
@@ -350,6 +353,15 @@ impl State {
             }
             Action::PickUp => {
                 self.pick_up(c, ev);
+                false
+            }
+            Action::Note { mark } => {
+                let key = (self.pos.x, self.pos.z);
+                if mark == 0 {
+                    self.level.notes.remove(&key);
+                } else {
+                    self.level.notes.insert(key, mark);
+                }
                 false
             }
             Action::Swap { a, b } => {
@@ -806,8 +818,10 @@ impl State {
                 let who: Vec<usize> = self.living().collect();
                 if let Some(&i) = self.rng.world.pick(&who) {
                     say(ev, format!("A needle pricks {}. Poison!", self.party[i].name));
-                    self.party[i].poison += 10;
-                    self.hurt(i, 1, "a poisoned needle", ev);
+                    if self.party[i].resist(c, Element::Poison) < 100 {
+                        self.party[i].poison += 10;
+                    }
+                    self.harm(c, i, 1, Element::Poison, "a poisoned needle", ev);
                 }
             }
             Trap::Gas => {
@@ -820,7 +834,7 @@ impl State {
                 say(ev, "The chest bursts into flame!");
                 for i in self.living().collect::<Vec<_>>() {
                     let d = Dice::new(2, 4, 0).roll(&mut self.rng.combat);
-                    self.hurt(i, d, "a fire trap", ev);
+                    self.harm(c, i, d, Element::Fire, "a fire trap", ev);
                 }
             }
             Trap::Alarm => {
@@ -1098,6 +1112,24 @@ impl State {
                 }
                 say(ev, format!("{} reaches level {}!", m.name, m.level));
             }
+        }
+    }
+
+    /// Harm of a kind: resistance takes its percent off, and past 100 the harm heals instead (R60: exploitable
+    /// stats, on purpose).
+    fn harm(&mut self, c: &Content, i: usize, amount: i32, el: Element, cause: &str, ev: &mut Vec<Event>) {
+        if el == Element::Physical {
+            return self.hurt(i, amount, cause, ev);
+        }
+        let r = self.party[i].resist(c, el);
+        let left = amount * (100 - r) / 100;
+        if left < 0 {
+            if self.party[i].alive() {
+                say(ev, format!("{} drinks in the {}!", self.party[i].name, el.name()));
+            }
+            self.heal(i, -left, ev);
+        } else {
+            self.hurt(i, left, cause, ev);
         }
     }
 
@@ -1501,7 +1533,7 @@ impl State {
             }
             Effect::Raise => self.raise(ev),
             Effect::Nothing => say(ev, "Nothing seems to happen."),
-            Effect::Protection(_) | Effect::Regeneration | Effect::Teleportitis | Effect::Aggravate | Effect::Jumping | Effect::SeeSecrets => {
+            Effect::Protection(_) | Effect::Regeneration | Effect::Teleportitis | Effect::Aggravate | Effect::Jumping | Effect::SeeSecrets | Effect::Resist(..) => {
                 say(ev, "Nothing seems to happen.")
             }
         }
@@ -1629,7 +1661,7 @@ impl State {
             if self.party[i].poison > 0 {
                 self.party[i].poison -= 1;
                 if t.is_multiple_of(2) {
-                    self.hurt(i, 1, "poison", ev);
+                    self.harm(c, i, 1, Element::Poison, "poison", ev);
                 }
                 if self.party[i].poison == 0 && self.party[i].alive() {
                     say(ev, format!("{} feels the poison pass.", self.party[i].name));
@@ -1650,7 +1682,7 @@ impl State {
             say(ev, "You are burning!");
             for i in self.living().collect::<Vec<_>>() {
                 let d = Dice::new(2, 6, 0).roll(&mut self.rng.combat);
-                self.hurt(i, d, "lava", ev);
+                self.harm(c, i, d, Element::Fire, "lava", ev);
             }
         }
         if self.party_effect(c, |e| matches!(e, Effect::Teleportitis)) && self.rng.world.chance(3) {
@@ -1777,7 +1809,7 @@ impl State {
         if hit {
             say(ev, format!("The {} {} {tname} for {damage}.", def.name, if ranged { "shoots" } else { "hits" }));
             let cause = format!("a {}", def.name);
-            self.hurt(target, damage, &cause, ev);
+            self.harm(c, target, damage, def.element, &cause, ev);
             match def.on_hit {
                 Some(OnHit::Poison) if self.party[target].alive() && self.rng.combat.chance(40) => {
                     self.party[target].poison += 6;

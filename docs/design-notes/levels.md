@@ -21,7 +21,7 @@ level from above: `cargo run -p lac-sim --example map -- <seed> <depth>`.
   | 5-6 | the Tombs | marble and bone |
   | 7-8 | the Deep | obsidian, crystal and lava |
 
-- Rooms and corridors: 8-12 rooms at three floor heights, joined by a spanning tree plus a few loops.
+- Rooms and corridors: 7-10 rooms of 5-11 tiles, 4-6 high, at three floor heights, joined by a spanning tree plus a few loops.
   Corridors climb one tile at a time, so every step up is a jump.
 - A room may get one of:
   - a ledge with a chest on top

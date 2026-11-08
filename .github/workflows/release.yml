@@ -40,7 +40,7 @@ jobs:
         with:
           workspaces: lac-rs
           key: release
-      - run: cargo test -p lac-sim --release --locked
+      - run: cargo test -p lac-sim -p lac-mesh --release --locked
       - run: cargo build --release --locked
       - name: Package
         run: |

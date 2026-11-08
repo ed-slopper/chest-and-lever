@@ -342,6 +342,9 @@ pub struct Level {
     pub start_facing: Dir,
     /// Columns (x, z) the party has seen, for the automap (R35).
     pub explored: BTreeSet<(i32, i32)>,
+    /// The player's marks on the automap (R60), by column.
+    #[serde(default, with = "pairs")]
+    pub notes: BTreeMap<(i32, i32), u8>,
 }
 
 /// The look and contents of a stretch of depths. REF R42 (crypts, tombs), R46 (caves, unconfirmed); the rest
@@ -412,6 +415,7 @@ impl Level {
             start: IVec3::ZERO,
             start_facing: Dir::North,
             explored: BTreeSet::new(),
+            notes: BTreeMap::new(),
         }
     }
 

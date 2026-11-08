@@ -58,6 +58,8 @@ act. Queue several actions and they play back faster. Default keys:
 | M | map |
 | 1-4 | pick a member |
 | Esc | menu (save and quit) |
+| F1 / H | help |
+| [ / ] | darker / brighter |
 
 All keys can be rebound in Options, and a gamepad works too.
 

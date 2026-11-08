@@ -1,0 +1,9 @@
+[package]
+name = "lac-mesh"
+description = "Tile textures and the voxel relief mesher of Chest and Lever: plain data, no Bevy, always optimised"
+edition.workspace = true
+license.workspace = true
+version.workspace = true
+
+[dependencies]
+lac-sim = { path = "../sim" }

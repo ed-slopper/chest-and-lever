@@ -103,5 +103,5 @@
         member: 0,
         index: 1,
     ), StepForward, LongJump, StepLeft, TurnRight, PickUp, Jump, StepForward, StepForward, Attack, TurnRight, StepForward, LongJump, StepLeft, StepForward, Attack, StepRight, TurnRight, Use, StepForward],
-    expect: Some("3a880b205c172da4"),
+    expect: Some("f667fd7480c5df2a"),
 )

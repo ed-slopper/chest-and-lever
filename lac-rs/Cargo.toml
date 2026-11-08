@@ -1,5 +1,5 @@
 [workspace]
-members = [".", "sim"]
+members = [".", "sim", "mesh"]
 resolver = "3"
 
 [workspace.package]
@@ -22,6 +22,7 @@ default-run = "lac"
 
 [dependencies]
 lac-sim = { path = "sim" }
+lac-mesh = { path = "mesh" }
 bevy = { version = "0.20.1", features = ["file_watcher", "wav"] }
 serde.workspace = true
 ron.workspace = true
@@ -36,6 +37,10 @@ opt-level = 3
 [profile.dev.package.lac]
 opt-level = 0
 debug = "line-tables-only"
+
+# the mesher crunches a lot of numbers; keep it fast even in debug builds
+[profile.dev.package.lac-mesh]
+opt-level = 3
 
 [profile.dev.package.lac-sim]
 debug = "line-tables-only"
