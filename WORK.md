@@ -20,24 +20,21 @@ them blocks the first engine rows.
 
 | ID | Task | Area | Needs | Who | Notes |
 |---|---|---|---|---|---|
-| F1 | The Cargo workspace `lac-rs/`: the crate `lac-sim` (`lac-rs/sim/`, no Bevy, no I/O) and the app `lac` (`lac-rs/`, Bevy 0.20, versions pinned in `Cargo.lock`). The app opens a window, clears it to a colour from the sim, quits on Esc; `cargo test -p lac-sim` runs one test. Window title from F5 when decided, `chest-and-lever` until then | unowned | | | [est] small. Linux packages in AGENTS.md §15. Keep `lac-sim` free of Bevy for good: it is what F4 replays |
+| F1 | The Cargo workspace `lac-rs/`: the crate `lac-sim` (`lac-rs/sim/`, no Bevy, no I/O) and the app `lac` (`lac-rs/`, Bevy 0.20, versions pinned in `Cargo.lock`). The app opens a window, clears it to a colour from the sim, quits on Esc; `cargo test -p lac-sim` runs one test. Window title from F5 when decided, `chest-and-lever` until then | unowned | | ed-slopper/heron (2026-11-08) | [est] small. Linux packages in AGENTS.md §15. Keep `lac-sim` free of Bevy for good: it is what F4 replays |
 | F2 | CI for the code: `.github/workflows/lac-rs.yml`, run when `lac-rs/**` changes or by hand: `cargo test -p lac-sim` (fast), then `cargo clippy` and `cargo build` for the app (Linux, with the packages Bevy needs, `Swatinem/rust-cache`) | unowned | F1 | | The Guard workflow (F0) already runs on every push |
-| F9 | Random numbers in `lac-sim`: one run seed (shown and typed as text, so runs can be shared) split into named streams (`levelgen`, `loot`, `ai`, `combat`, ...), so adding a draw in one system never shifts another. Mersenne Twister (`rand_mt`) as the record uses (R25); tests with fixed seeds and expected values | unowned | F1 | | R25, R44 |
+| F9 | Random numbers in `lac-sim`: one run seed (shown and typed as text, so runs can be shared) split into named streams (`levelgen`, `loot`, `ai`, `combat`, ...), so adding a draw in one system never shifts another. Mersenne Twister (`rand_mt`) as the record uses (R25); tests with fixed seeds and expected values | unowned | F1 | ed-slopper/heron (2026-11-08) | R25, R44 |
 | F4 | The replay test: a run = seed + list of actions; step `lac-sim` through it and compare a hash of the whole state with the expected value (`lac-rs/sim/tests/replay.rs`, recordings in `lac-rs/sim/tests/runs/`). The app writes and plays recordings (`--record <file>`, `--replay <file>`) | unowned | F1, F9, E1 | | Makes "deterministic" (AGENTS.md §13) checkable. Every sim row after it keeps it green |
 | F3a | Read r/leversandchests (Top of all time, and everything since 2026-01) and add what is new to `notes/reference.md` (trust 3 unless it links a post of Notch's) and `notes/media.md` | any | F3 | | Our tools can't read Reddit: needs a browser (by hand, or an agent driving one) |
 | F3b | Keep up with Notch's posts after 2026-10-10 (R3 is the newest): new facts into `notes/reference.md`, new pictures into `notes/media.md`, and a new open row for each fact that changes a done row | any | F3 | | Recurring: split a dated row (`F3b1`, ...) per pass, leave F3b open |
-| F5 | Our game's name, used for the window title, the crate names if wanted, the store page and the release. Not "Levers and Chests" (AGENTS.md §13) | humans | | | Blocks X5. Rename `lac-rs` only if the humans want to |
 | F6 | The movement model: tile-based, one tile per step and 90° turns, as the record shows (R20, R21) for the game; free movement (R26) only as the later option L2. Confirm, or choose otherwise | humans | | | Agents assume tile-based until this says other |
-| F7 | The licence of our code and of our assets (for example MIT/Apache-2.0 for code, CC BY 4.0 for art) | humans | | | Blocks X5, and assets from others (C10) |
-| F8 | Art direction: internal resolution (for example 320×180 or 480×270), palette size and the palette itself, voxels per tile edge, how close to the record's look (R40, R50-R55) we go | humans | | | Feeds E7, E9, C7-C9 |
 
 ## P1 Core engine
 
 | ID | Task | Area | Needs | Who | Notes |
 |---|---|---|---|---|---|
-| E1 | The action queue and the tick in `lac-sim`: an `Action` enum (step forward/back/left/right, turn left/right, jump, long jump, use, attack, wait), a queue the app pushes to, and `Sim::tick` that takes one action and advances the world by one turn. No action, no tick: time stands still (R27) | unowned | F1 | | R24, R27; R13 says turn-based |
+| E1 | The action queue and the tick in `lac-sim`: an `Action` enum (step forward/back/left/right, turn left/right, jump, long jump, use, attack, wait), a queue the app pushes to, and `Sim::tick` that takes one action and advances the world by one turn. No action, no tick: time stands still (R27) | unowned | F1 | ed-slopper/heron (2026-11-08) | R24, R27; R13 says turn-based |
 | E2 | Playback in the app: the sim runs a tick as soon as an action is queued; the app animates the change, and the more actions wait in the queue the faster it animates, so actions can be spammed or watched (R28). The speed curve is ours | unowned | E1, E5 | | R27, R28; OURS: the curve |
-| E3 | The grid world in `lac-sim`: tiles in chunks indexed by `IVec3` (solid, air, floor kinds, water), the party's tile and facing, a level struct saved and loaded as RON, a test level built from code | unowned | F1 | | R20, R23, R40 |
+| E3 | The grid world in `lac-sim`: tiles in chunks indexed by `IVec3` (solid, air, floor kinds, water), the party's tile and facing, a level struct saved and loaded as RON, a test level built from code | unowned | F1 | ed-slopper/heron (2026-11-08) | R20, R23, R40 |
 | E4 | Voxel meshes in the app: one mesh per chunk (greedy meshing, hidden faces culled), a material per tile kind, rebuilt when the sim changes a chunk | unowned | E3 | | R40 |
 | E5 | The first-person camera: placed from the party's tile and facing in the sim, a tweened step and a tweened 90° turn as in Legend of Grimrock (R14) | unowned | E1, E3 | | R14, R20; OURS: tween lengths, head bob |
 | E6 | Input: keyboard and gamepad mapped to `Action`s (R24), rebindable, bindings saved in a settings file | unowned | E1 | | R24. `leafwing-input-manager` or our own |
@@ -59,7 +56,6 @@ them blocks the first engine rows.
 | G6 | Levers: on/off, a list of linked targets, and the events a flip fires (open or close a door, raise a bridge, spring a trap, flood a room, wake monsters) | unowned | E3, E10 | | OURS: R72 |
 | G7 | Chests: opened, locked (keys), trapped; their loot rolled from the `loot` stream; some are mimics; some items cursed | unowned | G5, F9 | | OURS: R73 |
 | G8 | Monsters: entities on tiles that act once per tick; chase, attack, flee; spawned from the `ai` stream (R41-R43) | unowned | E1, G1, F9 | | R41-R43 |
-| G9a | The combat model: dice in the D&D way (the early pitch had "D20s", R16) or fixed numbers; everyone acting on each tick or by initiative | humans | | | Blocks G9 |
 | G9 | Combat: melee and ranged, front and back rows, to-hit, damage, a character's death | unowned | G3, G8, G9a | | OURS: R70, by G9a |
 | G10 | Abilities and spells; R36's unconfirmed time control is an idea, not a requirement | unowned | G9 | | OURS: R78 |
 | G11 | The run: permadeath, descending levels, the end screen (seed, depth, cause, stats), how a run is won | unowned | G9, C1 | | R12; OURS: R75, R77 |
@@ -107,6 +103,10 @@ them blocks the first engine rows.
 
 | ID | Task | Section | Who | Date | Commit |
 |---|---|---|---|---|---|
+| F5 | Our game's name: **Chest and Lever** (window title `Chest and Lever`; crates keep the `lac` names) | P0 | ed-slopper/heron | 2026-11-08 | c2fdf8d |
+| F7 | Licences: our code MIT OR Apache-2.0, our assets CC BY 4.0 | P0 | ed-slopper/heron | 2026-11-08 | c2fdf8d |
+| F8 | Art direction: render at 480×270, scaled up with nearest filtering; one 64-colour palette (8 ramps of 8); 16 texels per tile edge; all art made by us (generated in code), our own look, not traced from the record's pictures | P0 | ed-slopper/heron | 2026-11-08 | c2fdf8d |
+| G9a | Combat model: d20 + bonus against armour class to hit, weapon dice for damage (D&D-like, R16); one Attack action makes the whole party strike, monsters act after every party action | P2 | ed-slopper/heron | 2026-11-08 | c2fdf8d |
 | F3 | The reference: notes/reference.md (facts R1-R59, gaps R70-R78), notes/media.md, docs/design-notes/README.md | P0 | ed-slopper/wren | 2026-10-19 | 1ef7013 |
 | F0 | The board, the rules and the CI guard: WORK.md, AGENTS.md, CLAUDE.md, README.md, tools/check_board.py, tools/check_assets.py, .github/workflows/guard.yml, the allow-list .gitignore | P0 | ed-slopper/wren | 2026-10-19 | 1ef7013 |
 
@@ -114,3 +114,4 @@ them blocks the first engine rows.
 
 - 2026-10-19 ed-slopper/wren: board, rules and reference made, after the structure of ed-slopper/SSX-TRICKY-RUST-REWRITE (rows F0-F9, E1-E11, G1-G13, C1-C10, X1-X6, L1-L6); F0 and F3 claimed.
 - 2026-10-19 ed-slopper/wren: F0 and F3 done (1ef7013).
+- 2026-11-08 ed-slopper/heron: ed-slopper decided F5 (name Chest and Lever), F7 (MIT/Apache-2.0 + CC BY 4.0), F8 (480×270, 64 colours) and G9a (d20, whole party acts per tick); recorded in Done. F1, F9, E1, E3 claimed.
