@@ -423,9 +423,12 @@ impl Level {
         self.monsters.iter().position(|m| m.pos == p && m.hp > 0)
     }
 
-    /// Can anyone stand in this cell at all (not solid, nothing blocking)?
+    /// Can anyone stand in this cell at all (not solid, nothing blocking)? The space over a closed door is shut
+    /// too: a door fills its doorway, so nobody jumps over it.
     pub fn open(&self, p: IVec3) -> bool {
-        !self.world.solid(p) && !self.features.get(&p).is_some_and(|f| f.blocks())
+        !self.world.solid(p)
+            && !self.features.get(&p).is_some_and(|f| f.blocks())
+            && !matches!(self.features.get(&p.down()), Some(Feature::Door { open: false, .. }))
     }
 
     /// Is there something under this cell to stand on? OURS: chests, tombs and fountains hold you up too, so a

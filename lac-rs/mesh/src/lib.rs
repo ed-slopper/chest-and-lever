@@ -95,6 +95,7 @@ impl MeshData {
 /// OURS: a fixed shade per face direction, for the old-school look: tops brightest, bottoms darkest.
 const SHADE: [f32; 6] = [0.80, 0.80, 0.88, 0.55, 0.90, 0.70];
 const LIQUID_TOP: f32 = 0.38;
+const DEPTH_STEP: f32 = 0.4;
 const T: f32 = TILE as f32;
 
 /// A face direction: outward normal n, and the face's u (texel x, rightwards seen from outside) and v (texel y,
@@ -196,7 +197,8 @@ fn face(m: &mut MeshData, world: &World, tex: &[Tex], p: IVec3, fr: &Frame) {
     let (n, u, v) = (V3::of(fr.n), V3::of(fr.u), V3::of(fr.v));
     // the corner of the face where texel (0, 0) starts
     let origin = V3::of(p) + V3(0.5, 0.5, 0.5) + n * 0.5 - u * 0.5 - v * 0.5;
-    let at = |i: f32, j: f32, d: f32| origin + u * (i / T) + v * (j / T) - n * (d / T);
+    // OURS: each step of depth is 0.4 of a texel, so the relief reads without looking like rubble
+    let at = |i: f32, j: f32, d: f32| origin + u * (i / T) + v * (j / T) - n * (d * DEPTH_STEP / T);
     // depths, with outside corners kept flush
     let b_lo_u = border(world, p, IVec3::ZERO - fr.u, fr.n);
     let b_hi_u = border(world, p, fr.u, fr.n);

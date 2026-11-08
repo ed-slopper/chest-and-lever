@@ -322,3 +322,19 @@ fn a_unique_appears_at_most_once_per_run() {
         assert!(seen.values().all(|n| *n == 1), "seed {seed}: {seen:?}");
     }
 }
+
+#[test]
+fn nobody_jumps_over_a_closed_door() {
+    let mut s = test_sim();
+    let door = IVec3::new(5, 1, 4);
+    s.state.level.features.insert(door, Feature::Door { open: false, lock: None, portcullis: false });
+    s.tick(Action::Jump);
+    let ev = s.tick(Action::StepForward);
+    assert!(ev.contains(&Event::Bump), "the space over the door is shut");
+    s.tick(Action::Wait);
+    assert_eq!(s.state.pos, IVec3::new(5, 1, 5));
+    // opened, it lets the party through
+    s.tick(Action::Use);
+    s.tick(Action::StepForward);
+    assert_eq!(s.state.pos, door);
+}

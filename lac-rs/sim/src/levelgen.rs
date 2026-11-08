@@ -231,10 +231,11 @@ impl<'a> Gen<'a> {
                 // crossing another corridor: keep the lower floor, open up to both ceilings
                 let old = self.l.ground_below(x, z, SIZE.y - 2).unwrap_or(g);
                 let low = old.min(g);
-                let top = old.max(g) + 3;
+                let top = old.max(g) + 2;
                 self.carve_column(x, z, low, top - low);
             } else {
-                self.carve_column(x, z, g, 3);
+                // OURS: corridors are two tiles high: room to jump, and wider than tall on screen
+                self.carve_column(x, z, g, 2);
             }
             self.corridor.insert((x, z));
         }
@@ -561,6 +562,12 @@ impl<'a> Gen<'a> {
             }
             if !self.r.chance(35) {
                 continue;
+            }
+            // a lintel: the doorway is one tile high, so the door fills it
+            let above = p.up();
+            if !self.l.world.solid(above) {
+                let wall = self.theme().wall();
+                self.l.world.set(above, wall);
             }
             let roll = self.r.below(100);
             if roll < 20 {
