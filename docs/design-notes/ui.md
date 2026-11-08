@@ -21,5 +21,6 @@ Rows X1, X2, X4, G12, E11. Code: `lac-rs/src/hud.rs`, `menu.rs`.
   - the splash
   - the title: continue, new run, options, quit
   - a new run: type a seed or roll one
-  - options: spider-free mode, sound and music volume, colours, resolution, SSAO, key bindings
+  - options: spider-free mode, sound and music volume, colours, resolution, SSAO, brightness, key bindings
   - the end of a run: seed, depth, cause, ticks, kills, gold, chests, levers, and each member's level
+- In play, `[` and `]` change the brightness, and F1 (or H) shows the help screen.

@@ -16,7 +16,8 @@ Rows E4, E7, E8, E9, C8, C9. Code: `lac-rs/src/voxel.rs`, `palette.rs`, `texture
   SSAO and fog still apply. It looks colours up on the GPU and cycles three ranges: water, lava and crystal.
 - One mesh per chunk, with faces only between solid and open cells, merged into rectangles of the same texture
   (greedy meshing). Each face direction gets a fixed shade. Liquids are drawn as lowered surfaces.
-- Monsters and things are voxel models built in code from boxes, coloured from the same palette.
+- Monsters and things are voxel models built in code from boxes, coloured from the same palette. Wooden doors
+  swing 90° on a hinge at one edge and portcullises slide up, animated over a third of a second.
 - Light: the party carries a warm point light, wall torches flicker with their own lights, and there is a dim
   ambient light. Fog colour comes from a strip of palette colours, one per depth: our reading of R53 for an
   underground game.

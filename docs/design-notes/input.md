@@ -17,4 +17,4 @@ Row E6. Code: `lac-rs/src/settings.rs`, `game.rs` (`input`).
   - Screens: I/Tab inventory, C spells, M map, F3 debug, Esc menu.
   - 1-4 pick a party member.
 - Gamepad: the D-pad steps and turns, the shoulder buttons strafe, A jumps, B long-jumps, X uses, Y attacks,
-  the triggers wait and pick up, Start opens the menu, Select the inventory.
+  Start opens the menu, Select the inventory.

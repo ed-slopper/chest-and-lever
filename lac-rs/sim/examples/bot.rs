@@ -174,6 +174,12 @@ fn decide(sim: &Sim, stuck: &mut u32) -> Vec<Action> {
     if s.level.items.contains_key(&s.pos) && s.pack.len() < lac_sim::sim::PACK_SIZE {
         return vec![Action::PickUp];
     }
+    // next to the great chest: open it
+    for d in Dir::ALL {
+        if let Some(Feature::Chest { great: true, .. }) = s.level.features.get(&(s.pos + d.delta())) {
+            return face_then(sim, d, Action::Use);
+        }
+    }
     // the goal: stairs, or a tile next to the great chest
     let goal = |p: IVec3| match s.level.features.get(&p) {
         Some(Feature::Stairs { .. }) => true,
@@ -246,8 +252,18 @@ fn main() {
         let mut sim = Sim::new(&seed, RunOptions::default(), content.clone());
         let mut stuck = 0;
         let mut ticks_on_level = 0;
+        let mut idle = 0;
         let mut depth = 1;
         while sim.state.outcome == Outcome::Playing && sim.state.tick < 30_000 && stuck < 400 {
+            // actions that take no time can loop: after a few, shake it up
+            let before = sim.state.tick;
+            if idle >= 3 {
+                idle = 0;
+                let turn = if sim.state.tick.is_multiple_of(2) { Action::TurnLeft } else { Action::TurnRight };
+                sim.tick(turn);
+                sim.tick(Action::StepForward);
+                sim.tick(Action::Wait);
+            }
             let trace = std::env::var("BOT_TRACE").is_ok() && ticks_on_level < 400;
             for a in decide(&sim, &mut stuck) {
                 let ev = sim.tick(a);
@@ -256,6 +272,7 @@ fn main() {
                     println!("  {:?} {:?} {a:?} {msgs:?}", sim.state.pos, sim.state.facing);
                 }
             }
+            idle = if sim.state.tick == before { idle + 1 } else { 0 };
             ticks_on_level += 1;
             if sim.state.level.depth != depth {
                 depth = sim.state.level.depth;

@@ -24,6 +24,6 @@
         depth: (6, 8), weight: 4, undead: true, model: "knight"),
     "mimic": (name: "mimic", hp: "5d8", ac: 13, to_hit: 5, damage: "2d6", speed: 10, sight: 3, xp: 35,
         depth: (2, 8), weight: 0, special: true, model: "mimic"),
-    "warden": (name: "Warden of the Deep", hp: "12d10+20", ac: 17, to_hit: 8, damage: "3d6+3", speed: 12, sight: 10, xp: 300,
+    "warden": (name: "Warden of the Deep", hp: "10d10+10", ac: 16, to_hit: 7, damage: "2d8+3", speed: 12, sight: 10, xp: 300,
         depth: (8, 8), weight: 0, undead: true, special: true, model: "warden"),
 }
