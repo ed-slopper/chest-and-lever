@@ -32,4 +32,5 @@ Rows G5, C5. Code: `lac-rs/sim/src/item.rs`, `content.rs`; data `lac-rs/assets/c
 - Set items: the ward-iron helm, mail and shield. Two pieces on one member give +2 AC, three give +4, on top of
   their own armour.
 - Uniques: Gravecleaver, the Lantern Shield (sees secret walls), Emberheart. Rare (weight 1), always +3, never
-  cursed. They are not yet limited to one per run.
+  cursed. Each has one depth per run, picked from the seed, and appears there at most once (board row G16);
+  monster drops and fountains never give one.

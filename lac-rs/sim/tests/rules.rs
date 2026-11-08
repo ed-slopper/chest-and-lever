@@ -297,3 +297,28 @@ fn set_pieces_add_armour() {
     assert_eq!(one, bare + 2);
     assert_eq!(two, one + 5 + 2, "the second piece adds its own AC and the set bonus");
 }
+
+#[test]
+fn a_unique_appears_at_most_once_per_run() {
+    // board row G16
+    let c = Content::builtin();
+    for seed in 0..30u64 {
+        let mut seen = std::collections::BTreeMap::new();
+        for depth in 1..=8u8 {
+            let l = lac_sim::levelgen::generate(&c, seed, depth, RunOptions::default());
+            let mut items: Vec<&lac_sim::item::Item> = l.items.values().flatten().collect();
+            for f in l.features.values() {
+                if let Feature::Chest { items: inside, .. } = f {
+                    items.extend(inside.iter());
+                }
+            }
+            for it in items {
+                if c.item(&it.def).unique {
+                    *seen.entry(it.def.clone()).or_insert(0) += 1;
+                    assert_eq!(lac_sim::levelgen::unique_depth(&c, seed, &it.def), depth);
+                }
+            }
+        }
+        assert!(seen.values().all(|n| *n == 1), "seed {seed}: {seen:?}");
+    }
+}

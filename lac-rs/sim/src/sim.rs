@@ -875,7 +875,7 @@ impl State {
             }
             60..=69 => {
                 say(ev, "Something glitters at the bottom of the basin.");
-                let it = levelgen::roll_loot(c, "floor", self.level.depth, &mut self.rng.loot);
+                let it = levelgen::roll_loot(c, "floor", self.level.depth, &mut self.rng.loot, None);
                 for it in it {
                     self.give(c, it, ev);
                 }
@@ -1077,7 +1077,7 @@ impl State {
             let table = if kind == "mimic" { Some("chest") } else if self.rng.loot.chance(25) { Some("floor") } else { None };
             if let Some(t) = table {
                 let drop_at = if self.level.supported(pos) { pos } else { self.pos };
-                let items = levelgen::roll_loot(c, t, self.level.depth, &mut self.rng.loot);
+                let items = levelgen::roll_loot(c, t, self.level.depth, &mut self.rng.loot, None);
                 if !items.is_empty() {
                     self.level.items.entry(drop_at).or_default().extend(items);
                     ev.push(Event::ItemsChanged(drop_at));

@@ -64,6 +64,9 @@ struct Gen<'a> {
     corridor: BTreeSet<(i32, i32)>,
     options: RunOptions,
     next_link: u32,
+    seed: u64,
+    /// Uniques already placed on this level.
+    placed: BTreeSet<String>,
 }
 
 /// Make the level at `depth` of the run with this seed.
@@ -72,7 +75,7 @@ pub fn generate(c: &Content, seed: u64, depth: u8, options: RunOptions) -> Level
     let theme = Theme::for_depth(depth);
     for attempt in 0..40 {
         let sub = Mt19937::from_key(&[r.next_u32(), r.next_u32(), attempt]);
-        let built = if theme == Theme::Caves && attempt < 20 { caves(c, sub, depth, options) } else { rooms(c, sub, depth, options) };
+        let built = if theme == Theme::Caves && attempt < 20 { caves(c, sub, depth, options, seed) } else { rooms(c, sub, depth, options, seed) };
         if let Some(l) = built {
             return l;
         }
@@ -84,7 +87,7 @@ pub fn generate(c: &Content, seed: u64, depth: u8, options: RunOptions) -> Level
 }
 
 impl<'a> Gen<'a> {
-    fn new(c: &'a Content, r: Mt19937, depth: u8, options: RunOptions) -> Self {
+    fn new(c: &'a Content, r: Mt19937, depth: u8, options: RunOptions, seed: u64) -> Self {
         let theme = Theme::for_depth(depth);
         let mut l = Level::empty(depth, theme, SIZE, theme.wall());
         for x in 0..SIZE.x {
@@ -92,7 +95,13 @@ impl<'a> Gen<'a> {
                 l.world.set(IVec3::new(x, 0, z), Cell::Bedrock);
             }
         }
-        Gen { c, r, l, rooms: Vec::new(), gates: Vec::new(), solved: Vec::new(), bridges_up: BTreeSet::new(), corridor: BTreeSet::new(), options, next_link: 1 }
+        Gen { c, r, l, rooms: Vec::new(), gates: Vec::new(), solved: Vec::new(), bridges_up: BTreeSet::new(), corridor: BTreeSet::new(), options, next_link: 1, seed, placed: BTreeSet::new() }
+    }
+
+    /// Roll a loot table for this level; uniques may come only on their own depth, once (board row G16).
+    fn loot(&mut self, table: &str, depth: u8) -> Vec<Item> {
+        let mut rule = UniqueRule { seed: self.seed, placed: &mut self.placed };
+        roll_loot(self.c, table, depth, &mut self.r, Some(&mut rule))
     }
 
     fn theme(&self) -> Theme {
@@ -276,7 +285,7 @@ impl<'a> Gen<'a> {
         if self.r.chance(70) {
             self.chest(top);
         } else {
-            let items = roll_loot(self.c, "floor", self.l.depth, &mut self.r);
+            let items = self.loot("floor", self.l.depth);
             if !items.is_empty() {
                 self.l.items.insert(top, items);
             }
@@ -377,7 +386,7 @@ impl<'a> Gen<'a> {
 
     fn chest(&mut self, p: IVec3) {
         let depth = self.l.depth;
-        let items = roll_loot(self.c, "chest", depth, &mut self.r);
+        let items = self.loot("chest", depth);
         let lock = if self.r.chance(25) { Some([KeyKind::Iron, KeyKind::Bronze, KeyKind::Bone][self.r.below(3) as usize]) } else { None };
         let trap = if self.r.chance(20) {
             Some([Trap::Needle, Trap::Gas, Trap::Fire, Trap::Alarm, Trap::Teleport][self.r.below(5) as usize])
@@ -484,7 +493,7 @@ impl<'a> Gen<'a> {
                             self.l.items.entry(at).or_default().push(Item::new("iron_key"));
                         }
                         'i' => {
-                            let items = roll_loot(self.c, "floor", self.l.depth, &mut self.r);
+                            let items = self.loot("floor", self.l.depth);
                             self.l.items.entry(at).or_default().extend(items);
                         }
                         _ => {}
@@ -762,7 +771,7 @@ impl<'a> Gen<'a> {
         }
         for _ in 0..self.r.range(3, 6) {
             if let Some(p) = self.floor_spot(reach, None) {
-                let items = roll_loot(self.c, "floor", self.l.depth, &mut self.r);
+                let items = self.loot("floor", self.l.depth);
                 if !items.is_empty() {
                     self.l.items.entry(p).or_default().extend(items);
                 }
@@ -854,8 +863,8 @@ impl<'a> Gen<'a> {
                 }
             }
             self.l.features.insert(wall, Feature::SecretWall);
-            let mut items = roll_loot(self.c, "chest", self.l.depth, &mut self.r);
-            items.extend(roll_loot(self.c, "chest", self.l.depth + 1, &mut self.r));
+            let mut items = self.loot("chest", self.l.depth);
+            items.extend(self.loot("chest", self.l.depth + 1));
             self.l.features.insert(centre + d.delta(), Feature::Chest { open: false, lock: None, trap: None, mimic: false, items, facing: d.opposite(), great: false });
             return;
         }
@@ -871,8 +880,8 @@ impl<'a> Gen<'a> {
     }
 }
 
-fn rooms(c: &Content, r: Mt19937, depth: u8, options: RunOptions) -> Option<Level> {
-    let mut g = Gen::new(c, r, depth, options);
+fn rooms(c: &Content, r: Mt19937, depth: u8, options: RunOptions, seed: u64) -> Option<Level> {
+    let mut g = Gen::new(c, r, depth, options, seed);
     let want = g.r.range(7, 10) as usize;
     g.place_rooms(want, 4, depth >= FINAL_DEPTH);
     if g.rooms.len() < 5 {
@@ -952,8 +961,8 @@ fn rooms(c: &Content, r: Mt19937, depth: u8, options: RunOptions) -> Option<Leve
 }
 
 /// Cave levels: cellular automaton caverns with rolling floors. REF R46 (caves, unconfirmed); OURS.
-fn caves(c: &Content, r: Mt19937, depth: u8, options: RunOptions) -> Option<Level> {
-    let mut g = Gen::new(c, r, depth, options);
+fn caves(c: &Content, r: Mt19937, depth: u8, options: RunOptions, seed: u64) -> Option<Level> {
+    let mut g = Gen::new(c, r, depth, options, seed);
     let (w, d) = (SIZE.x as usize, SIZE.z as usize);
     let mut open = vec![false; w * d];
     for z in 2..d - 2 {
@@ -1083,16 +1092,37 @@ pub fn spawn(l: &mut Level, c: &Content, kind: &str, pos: IVec3, r: &mut Mt19937
     id
 }
 
+/// Where uniques may come from (board row G16): each has one depth per run, chosen from the seed, and is
+/// placed there at most once. Loot rolled during play (drops, fountains) gets no rule and never a unique.
+pub struct UniqueRule<'a> {
+    pub seed: u64,
+    pub placed: &'a mut BTreeSet<String>,
+}
+
+/// The one depth where a unique can appear in the run with this seed.
+pub fn unique_depth(c: &Content, seed: u64, id: &str) -> u8 {
+    let d = c.item(id).depth;
+    let span = (d.1.saturating_sub(d.0) as u64) + 1;
+    d.0 + (rng::fnv1a64(format!("{seed}:{id}").as_bytes()) % span) as u8
+}
+
 /// One random item of a category for this depth.
-pub fn roll_item(c: &Content, cat: &str, depth: u8, r: &mut Mt19937) -> Option<Item> {
+pub fn roll_item(c: &Content, cat: &str, depth: u8, r: &mut Mt19937, uniques: Option<&mut UniqueRule>) -> Option<Item> {
     let ids: Vec<&String> = c
         .items
         .iter()
         .filter(|(_, d)| d.kind.category() == cat && depth >= d.depth.0 && depth <= d.depth.1 && d.weight > 0)
+        .filter(|(id, d)| {
+            !d.unique || uniques.as_deref().is_some_and(|u| unique_depth(c, u.seed, id) == depth && !u.placed.contains(*id))
+        })
         .map(|(id, _)| id)
         .collect();
     let weights: Vec<u32> = ids.iter().map(|id| c.items[*id].weight).collect();
     let id = ids[r.weighted(&weights)?].clone();
+    if c.item(&id).unique
+        && let Some(u) = uniques {
+            u.placed.insert(id.clone());
+        }
     Some(make_item(c, &id, depth, r))
 }
 
@@ -1133,7 +1163,7 @@ pub fn make_item(c: &Content, id: &str, depth: u8, r: &mut Mt19937) -> Item {
 }
 
 /// Roll a loot table: `rolls` picks of a category (or `#id` for one item) by weight.
-pub fn roll_loot(c: &Content, table: &str, depth: u8, r: &mut Mt19937) -> Vec<Item> {
+pub fn roll_loot(c: &Content, table: &str, depth: u8, r: &mut Mt19937, mut uniques: Option<&mut UniqueRule>) -> Vec<Item> {
     let Some(t) = c.loot.get(table) else { return Vec::new() };
     let n = t.rolls.roll(r).max(0);
     let weights: Vec<u32> = t.entries.iter().map(|(_, w)| *w).collect();
@@ -1143,7 +1173,7 @@ pub fn roll_loot(c: &Content, table: &str, depth: u8, r: &mut Mt19937) -> Vec<It
         let cat = &t.entries[i].0;
         if let Some(id) = cat.strip_prefix('#') {
             out.push(make_item(c, id, depth, r));
-        } else if let Some(it) = roll_item(c, cat, depth, r) {
+        } else if let Some(it) = roll_item(c, cat, depth, r, uniques.as_deref_mut()) {
             out.push(it);
         }
     }
