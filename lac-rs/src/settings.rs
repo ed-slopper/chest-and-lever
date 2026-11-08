@@ -143,6 +143,9 @@ pub struct SettingsFile {
     pub ssao: bool,
     /// Multiplies the camera's exposure: 1 is as designed.
     pub brightness: f32,
+    /// Read gamepads. Off by default: virtual and idle controllers (remote-play and mouse software installs
+    /// them) send stray presses that would play the game by themselves.
+    pub gamepad: bool,
     /// Command to key names.
     pub bindings: Vec<(Command, Vec<String>)>,
 }
@@ -158,6 +161,7 @@ impl Default for SettingsFile {
             res_scale: 1,
             ssao: true,
             brightness: 1.0,
+            gamepad: false,
             bindings: vec![
                 b(Command::Forward, &["W", "Up", "Num8"]),
                 b(Command::Back, &["S", "Down", "Num2"]),
@@ -273,8 +277,11 @@ pub fn save_path() -> PathBuf {
 /// OURS: the gamepad layout. D-pad moves and turns, shoulders strafe, A jump, B long jump, X use, Y attack,
 /// Start the menu, Select the inventory. The analog triggers are left unmapped: worn ones drift and would
 /// queue actions nobody pressed.
-pub fn gamepad_commands(pads: &Query<&Gamepad>) -> Vec<Command> {
+pub fn gamepad_commands(pads: &Query<&Gamepad>, enabled: bool) -> Vec<Command> {
     let mut out = Vec::new();
+    if !enabled {
+        return out;
+    }
     for pad in pads.iter() {
         for (b, c) in [
             (GamepadButton::DPadUp, Command::Forward),

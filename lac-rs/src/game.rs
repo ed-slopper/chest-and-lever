@@ -118,10 +118,10 @@ impl Game {
         g.say("Find the stairs down. At the bottom waits the great chest.");
         g
     }
-    /// An awake monster the party can see, within eight tiles.
+    /// An awake monster within ten tiles, seen or not (they may be coming).
     pub fn danger(&self) -> bool {
         let s = &self.sim.state;
-        s.level.monsters.iter().any(|m| m.hp > 0 && m.awake && m.pos.flat_dist(s.pos) <= 8 && lac_sim::monster::line_of_sight(&s.level, s.pos, m.pos))
+        s.level.monsters.iter().any(|m| m.hp > 0 && m.awake && m.pos.flat_dist(s.pos) <= 10)
     }
     /// Everyone alive has full health and mana.
     pub fn rested(&self) -> bool {
@@ -514,7 +514,7 @@ pub fn input(
     sounds: Res<Sounds>,
 ) {
     use settings::Command as C;
-    let pad = settings::gamepad_commands(&pads);
+    let pad = settings::gamepad_commands(&pads, settings.file.gamepad);
     let pressed = |c: C| settings.just(c, &keys) || pad.contains(&c);
     if game.end_timer.is_some() || !game.replay.is_empty() {
         if pressed(C::Menu) {
@@ -532,6 +532,13 @@ pub fn input(
         game.debug = !game.debug;
     }
     let vol = settings.file.volume;
+    // any key stops a rest
+    if game.resting && (keys.get_just_pressed().next().is_some() || !pad.is_empty()) {
+        game.resting = false;
+        game.sim.clear_queue();
+        game.say("You stop resting.");
+        return;
+    }
     match game.overlay {
         Overlay::None => {
             for c in C::ALL {
@@ -1097,8 +1104,8 @@ pub fn animate(
     for (e, b, mut tr) in bolts.iter_mut() {
         tr.translation = b.from.lerp(b.to, t);
         let trail: &[Glow] = if b.fire { &[Glow::Fire, Glow::Ember] } else { &[Glow::White, Glow::Frost] };
-        // a trail of sparks behind the bolt, then a burst where it lands
-        burst(&mut commands, &pa, tr.translation, trail, 3, 0.4, false);
+        // a light trail of sparks behind the bolt, then a burst where it lands
+        burst(&mut commands, &pa, tr.translation, trail, 1, 0.3, false);
         if t >= 1.0 {
             burst(&mut commands, &pa, b.to, trail, 30, 2.2, true);
             commands.entity(e).despawn();

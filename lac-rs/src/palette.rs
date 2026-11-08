@@ -48,7 +48,7 @@ fn ramp_def(ramp: usize, vision: Vision) -> (f32, f32, f32, f32) {
     let base = match ramp {
         0 => (230.0, 0.08, 0.06, 0.82), // grey stone, a little blue
         1 => (28.0, 0.42, 0.07, 0.70),  // brown earth and wood
-        2 => (8.0, 0.55, 0.08, 0.68),   // brick red
+        2 => (14.0, 0.36, 0.08, 0.64),  // brick: a dusty, brownish red
         3 => (105.0, 0.40, 0.06, 0.66), // moss green
         4 => (205.0, 0.60, 0.08, 0.74), // water blue
         5 => (22.0, 0.95, 0.12, 0.88),  // fire: red to yellow-white

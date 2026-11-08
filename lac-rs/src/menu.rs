@@ -277,7 +277,7 @@ pub fn newrun_update(
 
 // ------------------------------------------------------------------ options (X4) and keys (E6)
 
-const OPTION_ROWS: usize = 9;
+const OPTION_ROWS: usize = 10;
 
 pub fn options_enter(mut menu: ResMut<Menu>) {
     menu.cursor = 0;
@@ -333,11 +333,15 @@ pub fn options_update(
             f.brightness = if right { (f.brightness * 1.25).min(8.0) } else { (f.brightness / 1.25).max(0.25) };
             changed = true;
         }
-        7 if enter => {
+        7 if left || right || enter => {
+            f.gamepad = !f.gamepad;
+            changed = true;
+        }
+        8 if enter => {
             next.set(Screen::Keys);
             return;
         }
-        8 if enter => {
+        9 if enter => {
             next.set(Screen::Title);
             return;
         }
@@ -367,6 +371,7 @@ pub fn options_update(
         format!("Resolution: {}x{}", 480 * f.res_scale as u32, 270 * f.res_scale as u32),
         format!("Ambient occlusion (SSAO): {}", if f.ssao { "on" } else { "off" }),
         format!("Brightness: {:.0}%", f.brightness * 100.0),
+        format!("Gamepad: {}", if f.gamepad { "on" } else { "off (turn on only if you play with one)" }),
         "Key bindings...".to_string(),
         "Back".to_string(),
     ];

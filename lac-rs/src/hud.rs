@@ -457,6 +457,12 @@ pub fn on_click(mut click: On<PointerClick>, q: Query<&Clickable>, game: Option<
     if game.end_timer.is_some() {
         return;
     }
+    if game.resting {
+        game.resting = false;
+        game.sim.clear_queue();
+        game.say("You stop resting.");
+        return;
+    }
     let primary = click.button == PointerButton::Primary;
     match *c {
         Clickable::Member(i) => {
@@ -598,8 +604,24 @@ pub fn update_hud(
             if s.haste > 0 {
                 fx.push(format!("quick {}", s.haste));
             }
-            if s.levitating(&sim.content) {
-                fx.push("floating".to_string());
+            if s.levitate > 0 {
+                fx.push(format!("floating: {} more", s.levitate));
+            } else if s.levitating(&sim.content) {
+                // a worn item does it: name it, so the player knows what to take off
+                let mut by = String::from("something worn");
+                for m in s.party.iter().filter(|m| m.alive()) {
+                    for it in m.equip.values() {
+                        let lev = match &sim.content.item(&it.def).kind {
+                            ItemKind::Ring { effect } | ItemKind::Amulet { effect } => matches!(effect, lac_sim::content::Effect::Levitate(_)),
+                            ItemKind::Armor { effect: Some(effect), .. } => matches!(effect, lac_sim::content::Effect::Levitate(_)),
+                            _ => false,
+                        };
+                        if lev {
+                            by = format!("{}'s {}", m.name, sim.item_name(it));
+                        }
+                    }
+                }
+                fx.push(format!("floating: {by}, take it off to land"));
             }
             if s.airborne {
                 fx.push("in the air".to_string());
