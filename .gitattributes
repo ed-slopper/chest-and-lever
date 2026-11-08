@@ -4,3 +4,4 @@
 *.toml text eol=lf
 *.py text eol=lf
 *.yml text eol=lf
+*.bat text eol=crlf

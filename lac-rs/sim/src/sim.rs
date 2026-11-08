@@ -204,6 +204,10 @@ impl Sim {
     pub fn push(&mut self, a: Action) {
         self.queue.push_back(a);
     }
+    /// The next action in the queue.
+    pub fn peek(&self) -> Option<&Action> {
+        self.queue.front()
+    }
     pub fn queued(&self) -> usize {
         self.queue.len()
     }
@@ -288,6 +292,11 @@ impl State {
 
     fn front(&self) -> IVec3 {
         self.pos + self.facing.delta()
+    }
+
+    /// Is something holding the party up: the floor, a chest, or (OURS) a monster it came down on?
+    fn standing(&self) -> bool {
+        self.level.supported(self.pos) || self.level.monster_at(self.pos.down()).is_some()
     }
 
     fn can_enter(&self, p: IVec3) -> bool {
@@ -381,7 +390,7 @@ impl State {
             say(ev, "You can't jump while floating.");
             return false;
         }
-        if !self.level.supported(self.pos) {
+        if !self.standing() {
             return false;
         }
         let height = if self.jumping_boots(c) { 2 } else { 1 };
@@ -407,7 +416,7 @@ impl State {
     /// REF R22: a long jump crosses a one-tile gap. OURS: it flies as far as it can up to two tiles (three
     /// with boots of jumping) and lands where it stops; the fall, if any, follows.
     fn long_jump(&mut self, c: &Content, ev: &mut Vec<Event>) -> bool {
-        if !self.level.supported(self.pos) && !self.levitating(c) {
+        if !self.standing() && !self.levitating(c) {
             return false;
         }
         let dist = if self.jumping_boots(c) { 3 } else { 2 };
@@ -440,8 +449,28 @@ impl State {
             return;
         }
         let from = self.pos;
-        while !self.level.supported(self.pos) && self.pos.y > 0 && self.can_enter(self.pos.down()) {
-            self.pos = self.pos.down();
+        loop {
+            if self.level.supported(self.pos) || self.pos.y <= 0 {
+                break;
+            }
+            let below = self.pos.down();
+            // OURS: falling onto a monster shoves it aside if it can go anywhere; else the party lands on it
+            if let Some(i) = self.level.monster_at(below) {
+                let spots: Vec<IVec3> = Dir::ALL.iter().map(|d| below + d.delta()).filter(|q| self.can_enter(*q) && self.level.supported(*q)).collect();
+                match self.rng.ai.pick(&spots).copied() {
+                    Some(q) => {
+                        let id = self.level.monsters[i].id;
+                        self.level.monsters[i].pos = q;
+                        ev.push(Event::MonsterMoved { id, from: below, to: q });
+                        say(ev, format!("You land beside the {}, knocking it aside.", c.monster(&self.level.monsters[i].kind).name));
+                    }
+                    None => break,
+                }
+            }
+            if !self.can_enter(below) {
+                break;
+            }
+            self.pos = below;
         }
         if self.pos == from {
             return;
@@ -494,7 +523,7 @@ impl State {
             if !items.is_empty() {
                 let names: Vec<String> = items.iter().take(4).map(|i| self.knowledge.name(c, i)).collect();
                 let more = if items.len() > 4 { ", ..." } else { "" };
-                say(ev, format!("Here: {}{more} (pick up: G)", names.join(", ")));
+                say(ev, format!("Here: {}{more}", names.join(", ")));
             }
         }
         if self.party_effect(c, |e| matches!(e, Effect::SeeSecrets)) {
@@ -674,7 +703,7 @@ impl State {
             }
             _ => {
                 if let Some(i) = self.level.monster_at(f) {
-                    say(ev, format!("The {} won't be used. Attack it (F).", c.monster(&self.level.monsters[i].kind).name));
+                    say(ev, format!("The {} won't be used. Attack it.", c.monster(&self.level.monsters[i].kind).name));
                     return false;
                 }
                 if self.level.world.solid(f) {
@@ -1268,7 +1297,7 @@ impl State {
             }
             ItemKind::Weapon { .. } | ItemKind::Armor { .. } | ItemKind::Ring { .. } | ItemKind::Amulet { .. } => self.equip(c, i, index, ev),
             ItemKind::Key { .. } => {
-                say(ev, "Face a locked door or chest and use it (E).");
+                say(ev, "Face a locked door or chest and use it.");
                 false
             }
             ItemKind::Crown => {

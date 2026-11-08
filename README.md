@@ -31,14 +31,57 @@ actually do, classes) we design ourselves and mark as ours.
 | `lac-rs/` | The game (made by board row F1): `sim/` the deterministic, Bevy-free rules; the app around it |
 | `tools/` | `check_board.py` (the board's format), `check_assets.py` (every asset credited) |
 
+## Play
+
+You need Rust (stable; on Windows the MSVC toolchain) and, on Linux, the packages in `AGENTS.md` section 15.
+
+```
+cd lac-rs
+cargo run --release
+```
+
+Descend eight levels and open the great chest guarded by the Warden of the Deep. Time stands still until you
+act. Queue several actions and they play back faster. Default keys:
+
+| Keys | Do |
+|---|---|
+| W / S / A / D | step forward, back, left, right |
+| Q / E (or the arrow keys) | turn |
+| Space | jump (up one tile; step right after to land on a ledge) |
+| Shift | long jump (across a one-tile gap) |
+| F | use the lever, door, chest or fountain in front; search a wall |
+| R | the whole party attacks |
+| Z | wait |
+| G | pick up |
+| I | inventory |
+| C | spells |
+| M | map |
+| 1-4 | pick a member |
+| Esc | menu (save and quit) |
+
+All keys can be rebound in Options, and a gamepad works too.
+
+Other ways to start:
+
+- `--seed <text>`: start a run on that seed at once
+- `--record <file>`: write the run's actions to a file
+- `--replay <file>`: play such a file back
+- `--test-level`: start on the small jumping test level
+
+The rules' tests and replays: `cargo test -p lac-sim`. See any level from above:
+`cargo run -p lac-sim --example map -- <seed> <depth>`.
+
 ## Status
 
-The board and the reference are up; no game code yet. Start at row F1 of [`WORK.md`](WORK.md).
+Playable from start to finish. All of it is our own work: the deterministic rules (`lac-rs/sim`), eight seeded
+levels in four themes, the party of four, items with curses and unidentified looks, monsters, d20 combat,
+levers, chests, doors and secret walls. The app adds a voxel renderer with palette cycling and SSAO, the HUD
+and automap, menus, saving, and sound synthesised in code. The board ([`WORK.md`](WORK.md)) lists what is done
+and what is still open.
 
 ## Legal
 
 Unofficial fan project, not affiliated with or endorsed by Markus Persson or Bitshift Entertainment. "Levers and
-Chests" is their working title and is used here only to say what we recreate; the game's own name is still to be
-decided (board row F5). This repository contains none of their pictures, models, textures, sounds or code: game
+Chests" is their working title and is used here only to say what we recreate; the game's own name is **Chest and Lever** (board row F5). This repository contains none of their pictures, models, textures, sounds or code: game
 mechanics are rebuilt from public descriptions, and every asset here is our own or openly licensed (see
-`assets/CREDITS.md`).
+`assets/CREDITS.md`). Code: MIT OR Apache-2.0; our assets: CC BY 4.0 (board row F7).

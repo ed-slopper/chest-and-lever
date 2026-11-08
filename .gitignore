@@ -42,3 +42,4 @@ __pycache__/
 /lac-rs/recordings/
 
 *.bak
+/lac-rs/target-*/

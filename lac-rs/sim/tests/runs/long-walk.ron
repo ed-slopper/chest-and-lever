@@ -1,0 +1,221 @@
+(
+    seed: "AMBER-DOOR-42",
+    options: (
+        spider_free: false,
+    ),
+    actions: [Attack, PickUp, StepForward, StepRight, Wait, Attack, LongJump, Use, Jump, TurnRight, TurnRight, Attack, Cast(
+        member: 3,
+        spell: Mend,
+    ), StepForward, StepForward, Jump, Attack, Attack, UseItem(
+        member: 1,
+        index: 3,
+    ), StepForward, StepLeft, Use, Jump, Use, Wait, StepForward, TurnRight, StepRight, StepForward, StepForward, StepForward, StepRight, StepForward, StepForward, LongJump, TurnRight, StepForward, StepForward, Use, TurnRight, StepForward, StepLeft, StepForward, Attack, StepForward, LongJump, StepRight, Attack, Attack, TurnLeft, Wait, Use, StepRight, StepRight, UseItem(
+        member: 3,
+        index: 2,
+    ), UseItem(
+        member: 0,
+        index: 3,
+    ), StepRight, TurnRight, LongJump, TurnLeft, StepForward, StepForward, Attack, Cast(
+        member: 3,
+        spell: Spark,
+    ), StepRight, Attack, StepForward, LongJump, StepLeft, StepLeft, Wait, StepRight, Jump, Attack, StepForward, TurnRight, Use, LongJump, Use, UseItem(
+        member: 0,
+        index: 3,
+    ), StepLeft, LongJump, TurnRight, Jump, TurnRight, Attack, StepRight, StepForward, StepForward, Wait, TurnRight, StepForward, LongJump, Attack, StepForward, StepForward, Attack, StepLeft, Cast(
+        member: 3,
+        spell: Spark,
+    ), TurnRight, StepForward, LongJump, LongJump, StepLeft, StepForward, Attack, TurnLeft, StepForward, Jump, StepForward, TurnLeft, TurnLeft, TurnRight, StepForward, StepForward, StepForward, StepLeft, StepForward, StepForward, LongJump, TurnRight, StepForward, StepForward, Attack, StepForward, LongJump, StepForward, TurnRight, StepForward, PickUp, StepForward, Wait, Attack, Wait, Attack, StepForward, StepForward, StepLeft, Jump, PickUp, PickUp, StepForward, StepForward, TurnLeft, TurnRight, Attack, StepForward, Jump, LongJump, Wait, StepForward, StepForward, LongJump, StepForward, Jump, Attack, Attack, StepForward, StepRight, PickUp, Wait, StepForward, LongJump, StepLeft, Attack, StepForward, StepLeft, UseItem(
+        member: 2,
+        index: 2,
+    ), LongJump, UseItem(
+        member: 1,
+        index: 3,
+    ), StepForward, PickUp, Attack, StepForward, Jump, StepForward, StepForward, StepForward, StepLeft, Attack, Attack, TurnLeft, StepForward, StepForward, Wait, StepRight, Cast(
+        member: 3,
+        spell: Spark,
+    ), UseItem(
+        member: 2,
+        index: 1,
+    ), StepLeft, StepForward, UseItem(
+        member: 3,
+        index: 1,
+    ), TurnRight, LongJump, StepForward, Attack, Jump, Use, Attack, Use, UseItem(
+        member: 2,
+        index: 1,
+    ), Attack, LongJump, StepForward, Use, Use, Jump, StepForward, StepForward, TurnLeft, LongJump, StepForward, StepForward, StepForward, StepForward, Wait, Attack, Jump, Jump, StepForward, StepRight, StepForward, StepForward, Attack, Cast(
+        member: 3,
+        spell: Mend,
+    ), StepForward, PickUp, StepForward, TurnLeft, Wait, StepForward, Jump, StepForward, StepForward, Cast(
+        member: 3,
+        spell: Mend,
+    ), StepForward, StepRight, Jump, StepForward, Jump, StepForward, Use, StepForward, StepForward, StepRight, Use, StepForward, Use, Jump, PickUp, Attack, StepForward, StepForward, Jump, Wait, StepForward, StepRight, StepForward, PickUp, Cast(
+        member: 3,
+        spell: Spark,
+    ), StepForward, StepForward, StepForward, TurnRight, StepRight, Attack, TurnRight, Wait, TurnLeft, Attack, StepRight, PickUp, StepForward, StepForward, StepForward, LongJump, StepForward, PickUp, StepRight, StepForward, PickUp, Attack, TurnRight, LongJump, Attack, PickUp, Use, LongJump, Jump, Jump, StepForward, Cast(
+        member: 3,
+        spell: Spark,
+    ), Wait, StepForward, StepForward, StepForward, PickUp, StepRight, StepForward, Cast(
+        member: 3,
+        spell: Mend,
+    ), Wait, StepForward, TurnRight, StepRight, LongJump, Attack, StepForward, LongJump, PickUp, PickUp, Use, StepForward, LongJump, StepForward, StepForward, StepForward, Jump, LongJump, StepForward, Attack, Wait, StepForward, Attack, Cast(
+        member: 2,
+        spell: Spark,
+    ), StepForward, StepRight, Wait, TurnLeft, StepForward, Jump, LongJump, Use, Use, StepForward, Wait, PickUp, StepForward, StepForward, StepForward, Jump, Jump, StepRight, Attack, Attack, StepForward, LongJump, Attack, StepForward, Use, StepForward, StepForward, Attack, Cast(
+        member: 2,
+        spell: Spark,
+    ), LongJump, StepForward, Attack, LongJump, StepForward, PickUp, Jump, TurnRight, StepForward, Wait, StepForward, StepLeft, TurnLeft, StepRight, Wait, StepForward, Attack, Attack, Jump, StepForward, StepRight, StepForward, StepForward, PickUp, TurnLeft, TurnRight, StepForward, LongJump, StepForward, StepForward, Use, Wait, Attack, StepForward, Jump, Attack, PickUp, StepForward, StepForward, StepForward, PickUp, StepForward, TurnRight, PickUp, StepForward, StepLeft, StepRight, StepForward, StepForward, StepForward, Jump, StepForward, StepForward, StepLeft, Attack, StepForward, StepRight, StepRight, Use, StepForward, StepForward, Wait, Jump, Jump, Jump, LongJump, StepForward, PickUp, Jump, StepForward, TurnRight, StepForward, Use, Attack, StepForward, Jump, StepForward, PickUp, StepRight, StepForward, PickUp, TurnRight, LongJump, Cast(
+        member: 3,
+        spell: Mend,
+    ), Wait, StepForward, Attack, StepLeft, Use, Use, TurnLeft, StepRight, PickUp, StepLeft, StepForward, StepForward, Jump, LongJump, TurnLeft, Use, StepForward, Cast(
+        member: 3,
+        spell: Mend,
+    ), StepForward, PickUp, Jump, StepRight, PickUp, Wait, StepRight, StepForward, StepForward, StepRight, StepForward, StepLeft, TurnRight, Wait, Use, TurnRight, Cast(
+        member: 2,
+        spell: Spark,
+    ), UseItem(
+        member: 2,
+        index: 3,
+    ), TurnLeft, Wait, StepForward, PickUp, Jump, Wait, Jump, Attack, Jump, StepLeft, TurnLeft, StepLeft, TurnRight, StepRight, TurnLeft, Wait, LongJump, StepLeft, Use, Use, StepForward, StepRight, StepForward, Attack, Wait, StepLeft, StepLeft, TurnRight, PickUp, TurnRight, Attack, Wait, StepForward, UseItem(
+        member: 1,
+        index: 3,
+    ), Wait, TurnLeft, StepRight, StepForward, StepForward, TurnRight, StepForward, StepForward, StepForward, StepForward, Use, StepForward, StepRight, StepForward, StepForward, Jump, PickUp, StepForward, Attack, StepForward, Attack, StepForward, UseItem(
+        member: 2,
+        index: 2,
+    ), TurnLeft, Use, PickUp, Use, StepForward, Wait, TurnRight, UseItem(
+        member: 3,
+        index: 1,
+    ), StepLeft, StepRight, StepForward, LongJump, StepForward, Attack, Use, StepRight, StepRight, TurnRight, StepForward, Attack, LongJump, Wait, TurnLeft, StepForward, PickUp, StepForward, StepForward, PickUp, StepForward, PickUp, TurnLeft, Wait, PickUp, StepForward, PickUp, StepForward, StepRight, Use, StepForward, StepForward, Cast(
+        member: 3,
+        spell: Spark,
+    ), StepForward, StepForward, Wait, Cast(
+        member: 3,
+        spell: Spark,
+    ), Attack, Use, Use, StepForward, LongJump, Use, TurnRight, StepForward, Attack, Attack, TurnRight, LongJump, TurnLeft, StepForward, Cast(
+        member: 3,
+        spell: Spark,
+    ), StepForward, StepForward, StepForward, StepForward, TurnRight, StepForward, StepRight, Jump, Jump, StepForward, PickUp, StepRight, StepForward, Attack, StepForward, Use, Jump, Attack, Use, Wait, TurnRight, StepForward, StepForward, Attack, StepForward, StepLeft, StepForward, LongJump, TurnLeft, Use, StepForward, TurnLeft, TurnLeft, Jump, StepForward, TurnLeft, StepForward, Wait, TurnLeft, TurnRight, StepRight, LongJump, LongJump, Wait, Wait, Jump, LongJump, StepForward, TurnRight, StepForward, Attack, TurnLeft, Use, TurnRight, Jump, Wait, Wait, LongJump, Wait, StepForward, StepForward, StepForward, Attack, TurnRight, StepForward, UseItem(
+        member: 3,
+        index: 2,
+    ), Wait, StepForward, UseItem(
+        member: 3,
+        index: 0,
+    ), UseItem(
+        member: 2,
+        index: 2,
+    ), UseItem(
+        member: 3,
+        index: 1,
+    ), StepForward, TurnRight, PickUp, LongJump, Use, Use, TurnRight, TurnRight, StepForward, StepForward, Use, Wait, StepForward, StepForward, Attack, Jump, StepForward, StepForward, Wait, StepForward, StepLeft, StepForward, Jump, UseItem(
+        member: 1,
+        index: 1,
+    ), Use, StepRight, TurnRight, Use, Jump, StepForward, StepForward, LongJump, Attack, StepForward, Use, Jump, UseItem(
+        member: 2,
+        index: 3,
+    ), LongJump, Use, Use, StepRight, StepForward, StepForward, StepForward, Jump, StepForward, UseItem(
+        member: 2,
+        index: 3,
+    ), StepLeft, StepForward, Attack, PickUp, StepForward, StepForward, Jump, StepForward, Use, TurnRight, StepForward, StepForward, StepRight, StepForward, Attack, StepRight, StepForward, TurnRight, Wait, TurnLeft, StepForward, Use, Use, Jump, Attack, StepForward, TurnLeft, StepForward, Jump, Wait, TurnRight, StepLeft, Use, TurnLeft, StepForward, StepForward, Attack, TurnLeft, StepRight, StepForward, Attack, StepForward, TurnRight, StepForward, Use, Wait, PickUp, Attack, LongJump, StepForward, TurnRight, LongJump, StepForward, Use, Jump, Attack, StepForward, PickUp, TurnRight, Use, PickUp, StepForward, StepRight, StepForward, StepForward, Jump, TurnLeft, LongJump, Attack, Attack, StepRight, Cast(
+        member: 2,
+        spell: Spark,
+    ), StepForward, StepForward, TurnRight, StepForward, Attack, TurnRight, StepForward, Attack, TurnLeft, Attack, TurnLeft, StepForward, StepForward, TurnLeft, StepLeft, Wait, Jump, Use, LongJump, Attack, StepRight, StepForward, Jump, StepRight, LongJump, PickUp, StepForward, Attack, StepForward, Wait, StepForward, Attack, LongJump, Wait, Use, PickUp, Attack, Attack, Attack, StepForward, TurnRight, StepLeft, StepRight, Attack, Wait, StepForward, StepLeft, LongJump, StepForward, Attack, Attack, TurnRight, StepForward, LongJump, StepForward, StepForward, TurnRight, LongJump, Attack, StepForward, TurnLeft, LongJump, StepForward, StepRight, StepLeft, PickUp, StepForward, Attack, StepLeft, StepForward, StepForward, Jump, Use, StepLeft, Use, StepForward, StepLeft, LongJump, Wait, StepForward, StepForward, Attack, LongJump, Use, Attack, Wait, StepRight, StepForward, Wait, StepForward, Cast(
+        member: 3,
+        spell: Spark,
+    ), StepForward, StepForward, Attack, StepForward, StepRight, StepLeft, LongJump, LongJump, StepForward, StepRight, TurnRight, StepForward, StepForward, StepForward, TurnRight, Attack, UseItem(
+        member: 2,
+        index: 0,
+    ), Attack, Wait, Use, StepForward, LongJump, StepForward, StepForward, StepForward, StepForward, StepForward, TurnLeft, StepForward, Attack, StepForward, StepForward, Use, Attack, StepForward, StepForward, StepRight, StepForward, StepRight, PickUp, Use, StepForward, TurnRight, StepForward, StepForward, StepForward, Jump, Attack, StepForward, StepForward, UseItem(
+        member: 0,
+        index: 0,
+    ), StepForward, Use, PickUp, Attack, StepForward, StepForward, StepRight, TurnLeft, StepForward, Use, StepForward, Attack, TurnRight, StepForward, StepForward, StepForward, StepForward, StepForward, StepForward, LongJump, StepLeft, StepForward, StepLeft, StepForward, StepForward, Attack, StepForward, StepForward, PickUp, Wait, StepForward, StepLeft, StepForward, PickUp, UseItem(
+        member: 0,
+        index: 1,
+    ), Cast(
+        member: 3,
+        spell: Mend,
+    ), StepForward, StepForward, Attack, TurnRight, Jump, StepForward, StepForward, StepForward, PickUp, Use, Attack, StepRight, Attack, UseItem(
+        member: 1,
+        index: 2,
+    ), StepRight, TurnRight, Wait, TurnLeft, TurnRight, Attack, UseItem(
+        member: 2,
+        index: 0,
+    ), StepForward, Use, StepRight, PickUp, Attack, StepForward, StepForward, StepForward, Cast(
+        member: 2,
+        spell: Mend,
+    ), LongJump, StepForward, PickUp, Use, StepForward, StepForward, StepLeft, Use, Jump, StepLeft, TurnLeft, StepForward, StepForward, Jump, LongJump, TurnLeft, Attack, StepForward, StepRight, StepForward, Jump, TurnRight, Use, StepRight, StepForward, Cast(
+        member: 3,
+        spell: Mend,
+    ), TurnRight, StepForward, StepForward, StepForward, TurnRight, Use, StepForward, StepLeft, StepForward, UseItem(
+        member: 0,
+        index: 1,
+    ), Attack, StepForward, Jump, Attack, Attack, Use, Use, StepForward, StepForward, Attack, StepForward, TurnRight, Wait, Wait, StepLeft, Attack, PickUp, StepForward, LongJump, Wait, PickUp, StepLeft, Jump, StepForward, StepLeft, Wait, TurnRight, StepForward, TurnRight, StepForward, TurnRight, Use, StepForward, Jump, LongJump, StepForward, LongJump, StepForward, TurnLeft, Wait, StepForward, StepForward, TurnRight, UseItem(
+        member: 3,
+        index: 0,
+    ), TurnLeft, Jump, Jump, StepForward, StepForward, PickUp, StepForward, Use, Jump, StepForward, Attack, Wait, StepForward, LongJump, StepForward, StepRight, StepForward, Use, StepForward, Jump, TurnRight, StepForward, StepForward, StepForward, Jump, StepForward, Jump, StepLeft, StepForward, StepForward, StepForward, Attack, Attack, Use, Use, Wait, TurnRight, StepForward, StepForward, Jump, StepForward, StepForward, StepForward, StepForward, Wait, Attack, StepForward, Attack, StepForward, TurnLeft, StepLeft, StepRight, StepForward, Wait, LongJump, UseItem(
+        member: 0,
+        index: 2,
+    ), Wait, StepForward, StepRight, Wait, StepRight, Wait, StepLeft, Use, Use, Attack, Cast(
+        member: 3,
+        spell: Mend,
+    ), StepLeft, StepForward, StepForward, LongJump, Attack, TurnRight, Use, Attack, Wait, TurnRight, StepForward, StepForward, PickUp, StepForward, Attack, StepForward, TurnLeft, Attack, Attack, StepForward, StepLeft, StepForward, Use, StepLeft, StepForward, PickUp, StepForward, StepForward, StepForward, StepForward, LongJump, StepLeft, Wait, Wait, Cast(
+        member: 3,
+        spell: Mend,
+    ), Use, Cast(
+        member: 3,
+        spell: Spark,
+    ), Cast(
+        member: 3,
+        spell: Mend,
+    ), StepForward, StepRight, Wait, StepForward, TurnRight, Attack, Jump, Attack, StepForward, TurnLeft, Attack, PickUp, StepForward, StepForward, PickUp, PickUp, StepForward, TurnLeft, TurnRight, Cast(
+        member: 2,
+        spell: Mend,
+    ), StepLeft, Attack, StepForward, TurnRight, Attack, Wait, LongJump, StepLeft, StepForward, Use, Cast(
+        member: 2,
+        spell: Spark,
+    ), TurnLeft, Attack, StepForward, StepForward, StepForward, StepRight, StepLeft, Use, Attack, Attack, PickUp, Use, StepForward, LongJump, StepRight, StepForward, Jump, Jump, StepLeft, StepRight, PickUp, StepForward, Use, StepForward, Wait, StepLeft, Use, StepForward, TurnLeft, TurnRight, Wait, LongJump, StepForward, StepForward, Wait, StepLeft, StepForward, Jump, TurnRight, StepRight, Jump, StepRight, StepForward, StepForward, TurnLeft, Use, Attack, StepForward, TurnLeft, Attack, StepForward, Wait, StepForward, StepForward, UseItem(
+        member: 2,
+        index: 1,
+    ), StepForward, StepForward, StepForward, Attack, Use, Wait, StepForward, LongJump, Jump, PickUp, StepForward, TurnRight, LongJump, StepForward, StepRight, StepForward, StepRight, PickUp, Jump, StepForward, Wait, TurnLeft, Use, UseItem(
+        member: 1,
+        index: 1,
+    ), StepForward, StepForward, StepForward, StepLeft, StepForward, StepForward, StepForward, Cast(
+        member: 2,
+        spell: Mend,
+    ), StepForward, Wait, TurnLeft, StepForward, StepForward, StepLeft, StepForward, StepForward, StepForward, StepForward, TurnLeft, PickUp, LongJump, StepRight, Wait, Wait, StepForward, UseItem(
+        member: 0,
+        index: 0,
+    ), Wait, StepForward, StepForward, StepForward, TurnRight, StepRight, StepForward, StepForward, StepRight, Jump, StepForward, StepForward, UseItem(
+        member: 1,
+        index: 1,
+    ), Attack, StepLeft, StepForward, Jump, Use, Attack, Use, Wait, StepForward, StepForward, StepForward, Wait, Attack, Use, StepForward, StepForward, Wait, Attack, StepForward, Jump, UseItem(
+        member: 1,
+        index: 2,
+    ), StepForward, TurnRight, Use, StepForward, UseItem(
+        member: 1,
+        index: 3,
+    ), StepForward, Wait, Jump, StepForward, Use, TurnRight, Attack, Attack, Wait, StepForward, StepForward, Attack, Cast(
+        member: 2,
+        spell: Spark,
+    ), StepRight, TurnLeft, Attack, LongJump, TurnRight, Jump, Wait, LongJump, StepForward, TurnRight, UseItem(
+        member: 2,
+        index: 2,
+    ), LongJump, StepForward, Wait, Attack, TurnLeft, Use, TurnLeft, StepForward, StepForward, StepForward, Attack, PickUp, Wait, UseItem(
+        member: 0,
+        index: 3,
+    ), Wait, StepForward, StepForward, StepForward, Jump, Use, TurnRight, Jump, Attack, StepForward, PickUp, Jump, TurnLeft, StepRight, StepForward, StepForward, Jump, LongJump, Attack, StepRight, Attack, PickUp, Use, StepForward, StepForward, StepLeft, StepForward, StepRight, StepForward, Attack, TurnRight, Use, StepRight, StepForward, Use, Jump, StepForward, UseItem(
+        member: 2,
+        index: 1,
+    ), Attack, LongJump, TurnLeft, TurnLeft, StepForward, StepForward, StepForward, StepForward, Attack, StepLeft, StepLeft, UseItem(
+        member: 3,
+        index: 1,
+    ), Cast(
+        member: 3,
+        spell: Spark,
+    ), StepRight, LongJump, Jump, StepForward, PickUp, Use, TurnRight, Jump, StepRight, PickUp, StepForward, LongJump, TurnRight, Jump, StepForward, StepRight, UseItem(
+        member: 2,
+        index: 3,
+    ), StepRight, TurnLeft, StepForward, StepForward, StepForward, TurnLeft, TurnLeft, Attack, TurnLeft, Attack, StepForward, StepForward, UseItem(
+        member: 2,
+        index: 0,
+    ), StepForward, StepLeft, TurnRight, Attack, Use, StepForward, StepForward, StepForward, StepForward, StepForward, PickUp, StepRight, StepRight, Attack, StepForward, TurnRight, Use, StepRight, StepForward, LongJump, StepForward, StepForward, StepForward, Use, StepForward, LongJump, PickUp, StepForward, StepLeft, StepForward, StepForward, Attack, StepForward, StepForward],
+    expect: Some("b6d8ce4915d655a7"),
+)

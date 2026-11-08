@@ -1,0 +1,41 @@
+(
+    seed: "FIRST-STEPS-1",
+    options: (
+        spider_free: false,
+    ),
+    actions: [StepForward, TurnRight, StepForward, StepForward, StepForward, UseItem(
+        member: 1,
+        index: 1,
+    ), StepForward, Attack, StepLeft, StepForward, StepForward, Jump, TurnLeft, Jump, Use, LongJump, StepForward, StepForward, Use, StepRight, LongJump, StepForward, Cast(
+        member: 2,
+        spell: Mend,
+    ), TurnRight, Use, LongJump, LongJump, StepLeft, StepForward, StepForward, TurnRight, Use, TurnRight, StepForward, StepForward, Use, TurnLeft, Jump, Wait, Attack, StepForward, StepLeft, Attack, Use, StepForward, StepForward, StepForward, StepForward, Attack, Use, Attack, StepForward, StepForward, StepLeft, Jump, Attack, StepForward, StepLeft, StepForward, StepForward, StepRight, PickUp, StepForward, StepForward, PickUp, Jump, StepForward, StepRight, TurnRight, StepForward, Wait, StepForward, Wait, StepForward, Attack, TurnLeft, Use, LongJump, PickUp, TurnRight, Jump, UseItem(
+        member: 1,
+        index: 1,
+    ), UseItem(
+        member: 0,
+        index: 1,
+    ), StepForward, StepForward, StepLeft, TurnLeft, Wait, Wait, TurnLeft, Attack, Attack, StepForward, StepForward, Jump, StepForward, TurnLeft, StepForward, StepLeft, StepForward, StepForward, StepForward, TurnRight, Wait, Use, StepForward, Use, Attack, Wait, StepRight, StepForward, StepForward, StepForward, Wait, PickUp, PickUp, StepForward, StepForward, TurnRight, TurnRight, StepForward, Attack, PickUp, StepLeft, Jump, Use, StepRight, StepForward, UseItem(
+        member: 0,
+        index: 0,
+    ), PickUp, LongJump, TurnRight, StepForward, StepRight, PickUp, UseItem(
+        member: 2,
+        index: 0,
+    ), StepForward, StepForward, StepForward, TurnLeft, TurnLeft, StepLeft, StepLeft, StepForward, Attack, StepForward, UseItem(
+        member: 1,
+        index: 2,
+    ), Attack, Attack, StepForward, StepForward, LongJump, StepForward, StepForward, StepForward, TurnLeft, StepForward, Attack, StepForward, TurnRight, StepForward, StepForward, Jump, Attack, TurnRight, StepForward, StepForward, TurnRight, Attack, TurnRight, TurnLeft, StepLeft, StepLeft, PickUp, Jump, StepForward, StepLeft, StepLeft, Cast(
+        member: 3,
+        spell: Mend,
+    ), Jump, PickUp, TurnLeft, Attack, UseItem(
+        member: 1,
+        index: 2,
+    ), Jump, StepForward, StepRight, Attack, StepRight, TurnLeft, Use, StepForward, StepRight, StepForward, TurnLeft, Jump, Attack, PickUp, StepForward, StepRight, Jump, TurnRight, TurnRight, StepForward, UseItem(
+        member: 1,
+        index: 3,
+    ), StepForward, TurnLeft, Use, TurnRight, StepForward, StepForward, TurnRight, PickUp, TurnRight, StepForward, Attack, Jump, Attack, PickUp, Attack, Wait, TurnRight, StepLeft, PickUp, TurnRight, StepForward, TurnRight, Jump, StepForward, TurnRight, StepForward, StepForward, Jump, Attack, Attack, StepForward, Use, LongJump, Use, Attack, TurnRight, StepLeft, StepForward, Use, Attack, StepForward, StepForward, Attack, Attack, StepLeft, TurnLeft, Jump, Use, Attack, StepForward, StepForward, LongJump, StepForward, StepForward, TurnRight, StepForward, TurnRight, StepForward, TurnLeft, StepLeft, StepForward, StepForward, StepForward, StepForward, StepRight, Use, TurnLeft, TurnRight, StepRight, StepForward, StepForward, Attack, StepForward, Jump, UseItem(
+        member: 3,
+        index: 3,
+    ), LongJump, Attack, Attack, PickUp, StepLeft, Wait, StepLeft, TurnRight, StepForward, Attack, Attack, Use, Wait, StepForward, LongJump, Jump, StepLeft, PickUp, StepForward, Attack, TurnRight, Wait, StepForward, TurnRight, TurnRight, LongJump, PickUp, Jump, Attack, StepLeft, TurnLeft, StepForward, Wait, PickUp, StepForward, StepRight, StepForward, StepForward, StepForward, StepForward, Wait, StepForward, Wait, Jump, StepForward, Wait, StepForward, StepForward, StepForward, StepRight, TurnRight, Attack, TurnRight, Use, Attack, Attack, StepForward, StepForward, TurnLeft, StepLeft, StepForward, StepForward, Attack, Wait, TurnRight, StepRight, Attack, TurnRight, TurnLeft, TurnRight, StepLeft, StepForward, StepRight, StepRight, Attack, Use, PickUp, Attack, StepForward, Jump, StepForward, StepForward, StepLeft, StepForward, Attack, StepForward, Attack, Wait, Wait, Jump, StepForward, Jump, Wait, Use, StepForward, Jump, StepForward, Use, StepForward, Attack, TurnLeft, Wait, StepForward, StepForward, Attack, Wait, TurnRight, StepRight, Attack, StepForward, StepForward, StepForward, StepRight, StepLeft, Wait, TurnRight, StepForward, PickUp, StepForward, StepLeft],
+    expect: Some("00fe50391d91967d"),
+)

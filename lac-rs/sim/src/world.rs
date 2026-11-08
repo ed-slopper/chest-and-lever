@@ -424,9 +424,11 @@ impl Level {
         !self.world.solid(p) && !self.features.get(&p).is_some_and(|f| f.blocks())
     }
 
-    /// Is there something under this cell to stand on?
+    /// Is there something under this cell to stand on? OURS: chests, tombs and fountains hold you up too, so a
+    /// long jump that comes down on one leaves the party standing on it.
     pub fn supported(&self, p: IVec3) -> bool {
-        self.world.solid(p.down())
+        let d = p.down();
+        self.world.solid(d) || self.features.get(&d).is_some_and(|f| f.blocks() && !matches!(f, Feature::Door { .. }))
     }
 
     /// The highest standing cell in column (x, z) at or below `from_y`, if any.

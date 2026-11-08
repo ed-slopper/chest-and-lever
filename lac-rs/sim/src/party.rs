@@ -145,9 +145,9 @@ pub fn modifier(score: i8) -> i32 {
     (score as i32 - 10).div_euclid(2)
 }
 
-/// Experience needed to reach `level + 1`. OURS: doubles each level.
+/// Experience needed to reach `level + 1`. OURS: doubles each level (15, 30, 60, ...; tuned with the bot, G14).
 pub fn xp_for_next(level: u8) -> u32 {
-    20 * (1u32 << (level.saturating_sub(1)).min(20))
+    15 * (1u32 << (level.saturating_sub(1)).min(20))
 }
 
 impl Character {

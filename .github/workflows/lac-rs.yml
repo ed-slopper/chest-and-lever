@@ -1,0 +1,57 @@
+# Board row F2. The sim's tests (fast, includes the replay test of F4), then clippy and a build of the Bevy app.
+# Runs only when lac-rs/ changes, or by hand (AGENTS.md section 15).
+name: lac-rs
+
+on:
+  push:
+    paths: ["lac-rs/**", ".github/workflows/lac-rs.yml"]
+  pull_request:
+    paths: ["lac-rs/**", ".github/workflows/lac-rs.yml"]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  sim:
+    name: lac-sim tests and replays
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: lac-rs
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: lac-rs
+          key: sim
+      - run: cargo test -p lac-sim --release --locked
+
+  app:
+    name: clippy and build (Bevy)
+    runs-on: ubuntu-latest
+    needs: sim
+    defaults:
+      run:
+        working-directory: lac-rs
+    steps:
+      - uses: actions/checkout@v4
+      - name: Packages Bevy needs on Linux
+        run: sudo apt-get update && sudo apt-get install -y pkg-config libasound2-dev libudev-dev libx11-dev libxcursor-dev libxi-dev libxrandr-dev libxkbcommon-dev libwayland-dev
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          components: clippy
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: lac-rs
+          key: app
+      - run: cargo clippy --workspace --locked -- -D warnings
+      - run: cargo build --locked
