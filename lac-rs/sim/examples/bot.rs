@@ -254,7 +254,7 @@ fn main() {
         let mut ticks_on_level = 0;
         let mut idle = 0;
         let mut depth = 1;
-        while sim.state.outcome == Outcome::Playing && sim.state.tick < 30_000 && stuck < 400 {
+        while sim.state.outcome == Outcome::Playing && sim.state.tick < 900_000 && stuck < 400 {
             // actions that take no time can loop: after a few, shake it up
             let before = sim.state.tick;
             if idle >= 3 {

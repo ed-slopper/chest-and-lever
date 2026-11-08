@@ -1092,7 +1092,7 @@ pub fn spawn(l: &mut Level, c: &Content, kind: &str, pos: IVec3, r: &mut Mt19937
         facing: Dir::ALL[r.below(4) as usize],
         hp,
         max_hp: hp,
-        energy: r.below(12) as i32,
+        energy: r.below(12 * 30) as i32,
         awake: false,
         sleep: 0,
     });

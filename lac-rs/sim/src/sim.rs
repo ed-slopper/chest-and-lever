@@ -19,8 +19,26 @@ use std::collections::VecDeque;
 pub const FINAL_DEPTH: u8 = 8;
 /// OURS: one shared pack of 24 items.
 pub const PACK_SIZE: usize = 24;
-/// OURS: a monster acts each time its energy reaches this.
-const ACT_COST: i32 = 12;
+/// REF R64: a tick is a sixtieth of a second of game time, and passes only while an action plays.
+pub const TICKS_PER_SECOND: u64 = 60;
+/// OURS: the world's slow rhythms (poison, healing, timers) beat once per round of half a second.
+pub const TICKS_PER_ROUND: u64 = 30;
+/// OURS: a monster acts each time its energy reaches this; it gains its `speed` every tick, so speed 12 acts
+/// once a round.
+const ACT_COST: i32 = 12 * TICKS_PER_ROUND as i32;
+
+/// How many ticks an action takes (its TickDuration, R64). Turning is free: it is animated but moves no time.
+/// OURS: the numbers.
+pub fn action_ticks(a: &Action) -> u64 {
+    match a {
+        Action::TurnLeft | Action::TurnRight => 0,
+        Action::Jump => 15,
+        Action::LongJump => 40,
+        Action::Attack | Action::AttackWith { .. } | Action::Cast { .. } => 36,
+        Action::Drop { .. } | Action::PickUp | Action::Swap { .. } | Action::Note { .. } => 0,
+        _ => 30,
+    }
+}
 
 /// What the player asks the party to do. REF R24: decoupled from raw input.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
@@ -236,10 +254,17 @@ impl Sim {
         let s = &mut self.state;
         let depth_before = s.level.depth;
         let took_time = s.party_act(c, a, &mut ev);
-        if !took_time || s.outcome != Outcome::Playing {
+        // REF R64: time passes only by the action's ticks; a turn is animated but costs none
+        let mut cost = if took_time { action_ticks(&a) } else { 0 };
+        if s.haste > 0 {
+            // OURS: haste halves what the party's actions cost
+            cost /= 2;
+        }
+        if cost == 0 || s.outcome != Outcome::Playing {
             return ev;
         }
-        s.tick += 1;
+        let before = s.tick;
+        s.tick += cost;
         if s.level.depth != depth_before {
             // a new level: the monsters there haven't seen us yet
             s.update_explored();
@@ -252,9 +277,11 @@ impl Sim {
                 return ev;
             }
         }
-        s.status(c, &mut ev);
+        for round in before / TICKS_PER_ROUND + 1..=s.tick / TICKS_PER_ROUND {
+            s.status(c, round, &mut ev);
+        }
         if s.outcome == Outcome::Playing {
-            s.monsters_act(c, &mut ev);
+            s.monsters_act(c, cost, &mut ev);
         }
         s.level.monsters.retain(|m| m.hp > 0);
         s.check_lost(&mut ev);
@@ -1652,8 +1679,8 @@ impl State {
     // ---------------------------------------------------------------- the world's turn
 
     /// Poison, regeneration, lava, curses, and timers running out.
-    fn status(&mut self, c: &Content, ev: &mut Vec<Event>) {
-        let t = self.tick;
+    fn status(&mut self, c: &Content, round: u64, ev: &mut Vec<Event>) {
+        let t = round;
         if self.haste > 0 {
             self.haste -= 1;
             if self.haste == 0 {
@@ -1703,15 +1730,15 @@ impl State {
         }
     }
 
-    fn monsters_act(&mut self, c: &Content, ev: &mut Vec<Event>) {
+    /// Monsters gain `speed` energy for each of the `ticks` that passed, and act for each ACT_COST of it.
+    fn monsters_act(&mut self, c: &Content, ticks: u64, ev: &mut Vec<Event>) {
         let aggravate = self.party_effect(c, |e| matches!(e, Effect::Aggravate));
-        let hasted = self.haste > 0;
         for idx in 0..self.level.monsters.len() {
             if self.level.monsters[idx].hp <= 0 {
                 continue;
             }
             let def = c.monster(&self.level.monsters[idx].kind);
-            let gain = if hasted { def.speed as i32 / 2 } else { def.speed as i32 };
+            let gain = def.speed as i32 * ticks as i32;
             self.level.monsters[idx].energy += gain;
             while self.level.monsters[idx].energy >= ACT_COST && self.level.monsters[idx].hp > 0 && self.outcome == Outcome::Playing {
                 self.level.monsters[idx].energy -= ACT_COST;

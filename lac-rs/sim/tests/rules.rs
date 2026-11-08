@@ -23,7 +23,7 @@ fn time_stands_still_without_actions() {
     assert!(s.step().is_some());
     assert!(s.step().is_some());
     assert!(s.step().is_none());
-    assert_eq!(s.state.tick, 2);
+    assert_eq!(s.state.tick, 2 * lac_sim::sim::action_ticks(&Action::Wait));
 }
 
 #[test]
@@ -238,7 +238,7 @@ fn standing_on_a_chest_holds_the_party_up() {
     assert_eq!(s.state.pos, IVec3::new(5, 2, 3));
     let t = s.state.tick;
     s.tick(Action::Jump);
-    assert_eq!(s.state.tick, t + 1, "can jump off a chest");
+    assert_eq!(s.state.tick, t + lac_sim::sim::action_ticks(&Action::Jump), "can jump off a chest");
 }
 
 #[test]
@@ -347,4 +347,16 @@ fn one_member_can_strike_alone() {
     let ev = s.tick(Action::AttackWith { member: 0 });
     let strikers: Vec<u8> = ev.iter().filter_map(|e| if let Event::PartyAttack { member, .. } = e { Some(*member) } else { None }).collect();
     assert_eq!(strikers, vec![0], "only Brann struck");
+}
+
+#[test]
+fn turning_takes_no_time() {
+    // REF R64: a turn is animated but moves no ticks, so monsters don't get to act while the party looks round
+    let mut s = test_sim();
+    s.tick(Action::TurnLeft);
+    s.tick(Action::TurnLeft);
+    assert_eq!(s.state.tick, 0);
+    assert_eq!(s.state.facing, Dir::South);
+    s.tick(Action::StepForward);
+    assert_eq!(s.state.tick, lac_sim::sim::action_ticks(&Action::StepForward));
 }
