@@ -1,0 +1,8 @@
+// How unidentified things look; shuffled per run from the `loot` stream (board row G5). Ours.
+(
+    potion: ["murky", "fizzing", "amber", "violet", "milky", "smoky", "crimson", "glowing", "oily", "teal", "bubbling", "gritty"],
+    scroll: ["ZELGO MER", "FOO BAR NIX", "TALVE ORN", "KIRJE", "VAS OBRA", "NUR ITH", "QWEN DOLO", "ESTAR VEL", "MORRA KAI", "PLIQUE"],
+    wand: ["oak", "bone", "copper", "glass", "iron", "ebony", "crystal", "willow"],
+    ring: ["opal", "jade", "ruby", "iron", "twisted", "wooden", "garnet", "moonstone"],
+    amulet: ["star", "eye", "knot", "spiral", "triangle", "fang"],
+)

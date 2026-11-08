@@ -1,0 +1,36 @@
+[workspace]
+members = [".", "sim"]
+resolver = "3"
+
+[workspace.package]
+edition = "2024"
+license = "MIT OR Apache-2.0"
+version = "0.1.0"
+
+[workspace.dependencies]
+serde = { version = "1", features = ["derive"] }
+ron = "0.12"
+
+# The app: Bevy is the window, GPU, input and audio host; the rules live in `lac-sim`.
+[package]
+name = "lac"
+description = "Chest and Lever: a first-person, tile-based party dungeon crawler"
+edition.workspace = true
+license.workspace = true
+version.workspace = true
+default-run = "lac"
+
+[dependencies]
+lac-sim = { path = "sim" }
+bevy = { version = "0.20.1", features = ["file_watcher"] }
+serde.workspace = true
+ron.workspace = true
+
+[profile.dev]
+opt-level = 1
+
+[profile.dev.package."*"]
+opt-level = 3
+
+[profile.release]
+codegen-units = 4

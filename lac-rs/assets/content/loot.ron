@@ -1,0 +1,12 @@
+// Loot tables (board rows E10, G7). OURS: R73 (what chests hold) is a gap.
+// rolls: how many picks. entries: (item category or "#item_id", weight).
+{
+    "chest": (rolls: "1d3+1", entries: [
+        ("gold", 30), ("potion", 22), ("scroll", 20), ("weapon", 8), ("armor", 8),
+        ("ring", 5), ("amulet", 3), ("wand", 4),
+    ]),
+    "floor": (rolls: "1", entries: [
+        ("gold", 30), ("potion", 22), ("scroll", 18), ("weapon", 10), ("armor", 10),
+        ("ring", 3), ("amulet", 2), ("wand", 3),
+    ]),
+}

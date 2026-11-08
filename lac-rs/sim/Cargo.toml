@@ -1,0 +1,10 @@
+[package]
+name = "lac-sim"
+description = "The deterministic rules of Chest and Lever: no Bevy, no I/O, no wall clock"
+edition.workspace = true
+license.workspace = true
+version.workspace = true
+
+[dependencies]
+serde.workspace = true
+ron.workspace = true

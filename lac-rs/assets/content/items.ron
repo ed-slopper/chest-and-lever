@@ -1,0 +1,76 @@
+// Items (board rows E10, G5, C5). Ours: names, numbers and effects. R12 asks for cursed items and broken
+// combinations; R74 (how curses work) is a gap, designed in lac-rs/sim/src/item.rs.
+// depth: (first, last) depth it is found at. weight: how often against its category. cursed: extra percent.
+{
+    // ---- weapons
+    "dagger": (name: "dagger", kind: Weapon(damage: "1d4", stat: Dex), depth: (1, 4), weight: 10, icon: "dagger"),
+    "short_sword": (name: "short sword", kind: Weapon(damage: "1d6", stat: Dex), depth: (1, 6), weight: 10, icon: "sword"),
+    "longsword": (name: "longsword", kind: Weapon(damage: "1d8", stat: Str), depth: (1, 8), weight: 8, icon: "sword"),
+    "mace": (name: "mace", kind: Weapon(damage: "1d8+1", stat: Str), depth: (1, 8), weight: 7, icon: "mace"),
+    "battle_axe": (name: "battle axe", kind: Weapon(damage: "1d12", two_handed: true, stat: Str), depth: (3, 8), weight: 5, icon: "axe"),
+    "greatsword": (name: "greatsword", kind: Weapon(damage: "2d6+1", two_handed: true, stat: Str), depth: (5, 8), weight: 3, icon: "sword"),
+    "spear": (name: "spear", kind: Weapon(damage: "1d6", reach: true, stat: Str), depth: (1, 6), weight: 8, icon: "spear"),
+    "halberd": (name: "halberd", kind: Weapon(damage: "1d10", reach: true, two_handed: true, stat: Str), depth: (4, 8), weight: 4, icon: "spear"),
+    "sling": (name: "sling", kind: Weapon(damage: "1d4", ranged: true, stat: Dex), depth: (1, 3), weight: 6, icon: "sling"),
+    "shortbow": (name: "shortbow", kind: Weapon(damage: "1d6", ranged: true, two_handed: true, stat: Dex), depth: (1, 6), weight: 6, icon: "bow"),
+    "longbow": (name: "longbow", kind: Weapon(damage: "1d8+1", ranged: true, two_handed: true, stat: Dex), depth: (4, 8), weight: 4, icon: "bow"),
+    "staff": (name: "quarterstaff", kind: Weapon(damage: "1d6", two_handed: true, stat: Str), depth: (1, 5), weight: 5, icon: "staff"),
+    "rusty_cleaver": (name: "rusty cleaver", kind: Weapon(damage: "1d10", stat: Str), depth: (2, 8), weight: 3, cursed: 60, icon: "axe"),
+
+    // ---- armour
+    "robe": (name: "robe", kind: Armor(slot: Body, ac: 0), depth: (1, 3), weight: 4, icon: "robe"),
+    "leather_armor": (name: "leather armour", kind: Armor(slot: Body, ac: 2), depth: (1, 5), weight: 10, icon: "armor"),
+    "chain_mail": (name: "chain mail", kind: Armor(slot: Body, ac: 4), depth: (2, 8), weight: 7, icon: "armor"),
+    "plate_mail": (name: "plate mail", kind: Armor(slot: Body, ac: 6), depth: (5, 8), weight: 3, icon: "armor"),
+    "buckler": (name: "buckler", kind: Armor(slot: Shield, ac: 1), depth: (1, 5), weight: 8, icon: "shield"),
+    "tower_shield": (name: "tower shield", kind: Armor(slot: Shield, ac: 2), depth: (3, 8), weight: 5, icon: "shield"),
+    "helm": (name: "iron helm", kind: Armor(slot: Head, ac: 1), depth: (1, 8), weight: 8, icon: "helm"),
+    "boots": (name: "leather boots", kind: Armor(slot: Feet, ac: 1), depth: (1, 8), weight: 7, icon: "boots"),
+    "boots_jumping": (name: "boots of jumping", kind: Armor(slot: Feet, ac: 0, effect: Some(Jumping)), depth: (2, 8), weight: 3, icon: "boots"),
+    "boots_levitation": (name: "boots of levitation", kind: Armor(slot: Feet, ac: 0, effect: Some(Levitate(0))), depth: (3, 8), weight: 2, cursed: 40, icon: "boots"),
+
+    // ---- rings and amulets (unidentified until worn or identified)
+    "ring_protection": (name: "ring of protection", kind: Ring(effect: Protection(2)), depth: (1, 8), weight: 6, icon: "ring"),
+    "ring_regeneration": (name: "ring of regeneration", kind: Ring(effect: Regeneration), depth: (2, 8), weight: 4, icon: "ring"),
+    "ring_teleportitis": (name: "ring of teleportitis", kind: Ring(effect: Teleportitis), depth: (1, 8), weight: 4, cursed: 70, icon: "ring"),
+    "ring_aggravate": (name: "ring of aggravate monster", kind: Ring(effect: Aggravate), depth: (1, 8), weight: 3, cursed: 90, icon: "ring"),
+    "ring_levitation": (name: "ring of levitation", kind: Ring(effect: Levitate(0)), depth: (3, 8), weight: 3, icon: "ring"),
+    "amulet_sight": (name: "amulet of hidden ways", kind: Amulet(effect: SeeSecrets), depth: (1, 8), weight: 4, icon: "amulet"),
+    "amulet_warding": (name: "amulet of warding", kind: Amulet(effect: Protection(3)), depth: (3, 8), weight: 3, icon: "amulet"),
+    "amulet_strangling": (name: "amulet of the hungry dark", kind: Amulet(effect: Aggravate), depth: (2, 8), weight: 2, cursed: 100, icon: "amulet"),
+
+    // ---- potions (unidentified until drunk or identified)
+    "potion_healing": (name: "potion of healing", kind: Potion(effect: Heal("2d6+2")), depth: (1, 8), weight: 14, icon: "potion"),
+    "potion_extra_healing": (name: "potion of extra healing", kind: Potion(effect: Heal("4d8+4")), depth: (3, 8), weight: 6, icon: "potion"),
+    "potion_mana": (name: "potion of clear thought", kind: Potion(effect: Mana("3d4")), depth: (1, 8), weight: 8, icon: "potion"),
+    "potion_cure": (name: "potion of purging", kind: Potion(effect: Cure), depth: (1, 8), weight: 6, icon: "potion"),
+    "potion_poison": (name: "potion of bile", kind: Potion(effect: Poison("1d6")), depth: (1, 8), weight: 5, icon: "potion"),
+    "potion_strength": (name: "potion of strength", kind: Potion(effect: Strength), depth: (2, 8), weight: 3, icon: "potion"),
+    "potion_haste": (name: "potion of haste", kind: Potion(effect: Haste(25)), depth: (2, 8), weight: 4, icon: "potion"),
+    "potion_levitation": (name: "potion of levitation", kind: Potion(effect: Levitate(40)), depth: (1, 8), weight: 4, icon: "potion"),
+    "potion_water": (name: "potion of water", kind: Potion(effect: Nothing), depth: (1, 8), weight: 3, icon: "potion"),
+
+    // ---- scrolls (unidentified until read or identified)
+    "scroll_identify": (name: "scroll of identify", kind: Scroll(effect: Identify), depth: (1, 8), weight: 14, icon: "scroll"),
+    "scroll_remove_curse": (name: "scroll of remove curse", kind: Scroll(effect: RemoveCurse), depth: (1, 8), weight: 7, icon: "scroll"),
+    "scroll_teleport": (name: "scroll of teleportation", kind: Scroll(effect: Teleport), depth: (1, 8), weight: 6, icon: "scroll"),
+    "scroll_mapping": (name: "scroll of magic mapping", kind: Scroll(effect: Mapping), depth: (1, 8), weight: 6, icon: "scroll"),
+    "scroll_enchant_weapon": (name: "scroll of enchant weapon", kind: Scroll(effect: EnchantWeapon), depth: (1, 8), weight: 6, icon: "scroll"),
+    "scroll_enchant_armor": (name: "scroll of enchant armour", kind: Scroll(effect: EnchantArmor), depth: (1, 8), weight: 6, icon: "scroll"),
+    "scroll_fire": (name: "scroll of fire", kind: Scroll(effect: Fire("3d6")), depth: (2, 8), weight: 4, icon: "scroll"),
+    "scroll_blank": (name: "blank scroll", kind: Scroll(effect: Nothing), depth: (1, 8), weight: 2, icon: "scroll"),
+
+    // ---- wands (unidentified until zapped or identified)
+    "wand_fire": (name: "wand of fire", kind: Wand(effect: Fire("4d6"), charges: "1d4+2"), depth: (2, 8), weight: 4, icon: "wand"),
+    "wand_lightning": (name: "wand of lightning", kind: Wand(effect: Lightning("3d6"), charges: "1d4+2"), depth: (3, 8), weight: 3, icon: "wand"),
+    "wand_digging": (name: "wand of digging", kind: Wand(effect: Dig, charges: "1d4+3"), depth: (2, 8), weight: 3, icon: "wand"),
+    "wand_sleep": (name: "wand of slumber", kind: Wand(effect: Sleep, charges: "1d4+3"), depth: (1, 8), weight: 4, icon: "wand"),
+    "wand_nothing": (name: "wand of nothing", kind: Wand(effect: Nothing, charges: "1d6"), depth: (1, 8), weight: 2, icon: "wand"),
+
+    // ---- keys, gold, the crown
+    "iron_key": (name: "iron key", kind: Key(key: Iron), depth: (1, 8), weight: 0, icon: "key"),
+    "bronze_key": (name: "bronze key", kind: Key(key: Bronze), depth: (1, 8), weight: 0, icon: "key"),
+    "bone_key": (name: "bone key", kind: Key(key: Bone), depth: (1, 8), weight: 0, icon: "key"),
+    "gold": (name: "gold", kind: Gold(amount: "3d10"), depth: (1, 8), weight: 10, icon: "gold"),
+    "crown": (name: "the Sunken Crown", kind: Crown, depth: (8, 8), weight: 0, icon: "crown"),
+}
