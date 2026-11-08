@@ -221,3 +221,46 @@ fn random_play_keeps_invariants() {
         }
     }
 }
+
+#[test]
+fn standing_on_a_chest_holds_the_party_up() {
+    // a long jump that comes down on a chest leaves the party standing on it, free to move on
+    let mut s = test_sim();
+    let chest = IVec3::new(5, 1, 3);
+    s.state.level.world.set(chest, lac_sim::Cell::Air);
+    s.state.level.features.insert(chest, Feature::Chest { open: false, lock: None, trap: None, mimic: false, items: vec![], facing: Dir::South, great: false });
+    // stand on the ledge row beside it, one up
+    s.state.pos = IVec3::new(4, 2, 3);
+    s.state.facing = Dir::East;
+    s.tick(Action::StepForward);
+    assert_eq!(s.state.pos, IVec3::new(5, 2, 3), "on top of the chest");
+    s.tick(Action::Wait);
+    assert_eq!(s.state.pos, IVec3::new(5, 2, 3));
+    let t = s.state.tick;
+    s.tick(Action::Jump);
+    assert_eq!(s.state.tick, t + 1, "can jump off a chest");
+}
+
+#[test]
+fn falling_onto_a_monster_shoves_it_aside() {
+    let mut s = test_sim();
+    let c = Content::builtin();
+    // the pit at z = 7 is two deep: a rat waits at the bottom
+    lac_sim::levelgen::spawn(&mut s.state.level, &c, "rat", IVec3::new(5, 0, 7), &mut lac_sim::rng::Mt19937::new(1), RunOptions::default());
+    s.state.pos = IVec3::new(5, 1, 6);
+    s.state.facing = Dir::South;
+    s.tick(Action::StepForward);
+    assert_eq!(s.state.pos, IVec3::new(5, 0, 7), "landed in the pit");
+    assert!(s.state.level.monsters.iter().all(|m| m.pos != s.state.pos), "the rat was pushed out of the way");
+}
+
+#[test]
+fn raise_dead_brings_back_the_fallen() {
+    let mut s = test_sim();
+    s.state.party[1].hp = 0;
+    s.state.pack.push(lac_sim::item::Item::new("scroll_raise"));
+    let i = s.state.pack.len() as u16 - 1;
+    s.tick(Action::UseItem { member: 0, index: i });
+    assert!(s.state.party[1].alive());
+    assert_eq!(s.state.party[1].hp, (s.state.party[1].max_hp / 4).max(1));
+}
