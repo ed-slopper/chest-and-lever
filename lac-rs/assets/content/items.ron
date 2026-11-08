@@ -47,7 +47,7 @@
     "potion_poison": (name: "potion of bile", kind: Potion(effect: Poison("1d6")), depth: (1, 8), weight: 5, icon: "potion"),
     "potion_strength": (name: "potion of strength", kind: Potion(effect: Strength), depth: (2, 8), weight: 3, icon: "potion"),
     "potion_haste": (name: "potion of haste", kind: Potion(effect: Haste(25)), depth: (2, 8), weight: 4, icon: "potion"),
-    "potion_levitation": (name: "potion of levitation", kind: Potion(effect: Levitate(40)), depth: (1, 8), weight: 4, icon: "potion"),
+    "potion_levitation": (name: "potion of levitation", kind: Potion(effect: Levitate(20)), depth: (1, 8), weight: 4, icon: "potion"),
     "potion_water": (name: "potion of water", kind: Potion(effect: Nothing), depth: (1, 8), weight: 3, icon: "potion"),
 
     // ---- scrolls (unidentified until read or identified)

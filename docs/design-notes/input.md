@@ -18,5 +18,7 @@ Row E6. Code: `lac-rs/src/settings.rs`, `game.rs` (`input`).
   - T rests (waits, fast, until everyone is healed; stops when an awake monster is in sight or someone is hurt);
     N marks the map.
   - 1-4 pick a party member.
+- Gamepads are off by default (Options > Gamepad): virtual and idle controllers that remote-play and mouse
+  software install sent stray presses that played the game by themselves.
 - Gamepad: the D-pad steps and turns, the shoulder buttons strafe, A jumps, B long-jumps, X uses, Y attacks,
   Start opens the menu, Select the inventory.

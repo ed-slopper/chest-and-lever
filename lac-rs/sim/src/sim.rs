@@ -1468,7 +1468,7 @@ impl State {
             }
             Effect::Levitate(t) => {
                 self.levitate += (*t).max(10);
-                say(ev, "The party floats up off the floor.");
+                say(ev, format!("The party floats up off the floor, for {} rounds. No jumping, and stairs are out of reach.", self.levitate));
             }
             Effect::Identify => {
                 let n = self.rng.world.range(1, 3) as usize;
@@ -1642,6 +1642,14 @@ impl State {
             }
         }
         new.known = true;
+        let lifts = match &kind {
+            ItemKind::Ring { effect } | ItemKind::Amulet { effect } => matches!(effect, Effect::Levitate(_)),
+            ItemKind::Armor { effect: Some(effect), .. } => matches!(effect, Effect::Levitate(_)),
+            _ => false,
+        };
+        if lifts {
+            say(ev, "The party drifts up off the floor! Take it off to come down.");
+        }
         if matches!(kind, ItemKind::Ring { .. } | ItemKind::Amulet { .. }) {
             // OURS: you learn what jewellery is once it's on
             self.knowledge.identified.insert(new.def.clone());
