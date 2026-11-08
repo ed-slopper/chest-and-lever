@@ -58,6 +58,8 @@ act. Queue several actions and they play back faster. Default keys:
 | M | map |
 | 1-4 | pick a member |
 | Esc | menu (save and quit) |
+| T | rest until healed (stops if danger shows) |
+| N | mark the map |
 | F1 / H | help |
 | [ / ] | darker / brighter |
 

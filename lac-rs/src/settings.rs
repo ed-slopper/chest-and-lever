@@ -27,11 +27,14 @@ pub enum Command {
     Spells,
     Map,
     Debug,
+    Help,
+    Note,
+    Rest,
     Menu,
 }
 
 impl Command {
-    pub const ALL: [Command; 17] = [
+    pub const ALL: [Command; 20] = [
         Command::Forward,
         Command::Back,
         Command::StrafeLeft,
@@ -48,6 +51,9 @@ impl Command {
         Command::Spells,
         Command::Map,
         Command::Debug,
+        Command::Help,
+        Command::Note,
+        Command::Rest,
         Command::Menu,
     ];
     pub fn name(self) -> &'static str {
@@ -68,6 +74,9 @@ impl Command {
             Command::Spells => "spells",
             Command::Map => "big map",
             Command::Debug => "debug overlay",
+            Command::Help => "help",
+            Command::Note => "mark the map",
+            Command::Rest => "rest",
             Command::Menu => "menu",
         }
     }
@@ -132,6 +141,8 @@ pub struct SettingsFile {
     /// 1 = 480×270 (F8), 2 = 960×540.
     pub res_scale: u8,
     pub ssao: bool,
+    /// Multiplies the camera's exposure: 1 is as designed.
+    pub brightness: f32,
     /// Command to key names.
     pub bindings: Vec<(Command, Vec<String>)>,
 }
@@ -146,6 +157,7 @@ impl Default for SettingsFile {
             vision: Vision::Normal,
             res_scale: 1,
             ssao: true,
+            brightness: 1.0,
             bindings: vec![
                 b(Command::Forward, &["W", "Up", "Num8"]),
                 b(Command::Back, &["S", "Down", "Num2"]),
@@ -163,6 +175,9 @@ impl Default for SettingsFile {
                 b(Command::Spells, &["C"]),
                 b(Command::Map, &["M"]),
                 b(Command::Debug, &["F3"]),
+                b(Command::Help, &["F1", "H"]),
+                b(Command::Note, &["N"]),
+                b(Command::Rest, &["T"]),
                 b(Command::Menu, &["Escape"]),
             ],
         }
@@ -200,6 +215,10 @@ impl Settings {
         if !self.file.bindings.iter().any(|(cmd, _)| *cmd == c) {
             self.file.bindings.push((c, vec![name]));
         }
+    }
+    /// The first key of a command, for the short hints.
+    pub fn main_key(&self, c: Command) -> &'static str {
+        self.keys(c).first().map(|k| key_name(*k)).unwrap_or("-")
     }
     pub fn describe(&self, c: Command) -> String {
         let ks = self.keys(c);
@@ -252,7 +271,8 @@ pub fn save_path() -> PathBuf {
 }
 
 /// OURS: the gamepad layout. D-pad moves and turns, shoulders strafe, A jump, B long jump, X use, Y attack,
-/// Start the menu, Select the inventory.
+/// Start the menu, Select the inventory. The analog triggers are left unmapped: worn ones drift and would
+/// queue actions nobody pressed.
 pub fn gamepad_commands(pads: &Query<&Gamepad>) -> Vec<Command> {
     let mut out = Vec::new();
     for pad in pads.iter() {
@@ -269,8 +289,6 @@ pub fn gamepad_commands(pads: &Query<&Gamepad>) -> Vec<Command> {
             (GamepadButton::North, Command::Attack),
             (GamepadButton::Start, Command::Menu),
             (GamepadButton::Select, Command::Inventory),
-            (GamepadButton::LeftTrigger2, Command::Wait),
-            (GamepadButton::RightTrigger2, Command::PickUp),
         ] {
             if pad.just_pressed(b) {
                 out.push(c);

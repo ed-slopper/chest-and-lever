@@ -21,15 +21,19 @@ use lac_sim::{Action, Dir, Event, IVec3 as SIVec3, Outcome, Recording, Sim};
 use std::collections::{BTreeMap, BTreeSet, VecDeque};
 use std::path::PathBuf;
 
-/// F8: the internal resolution.
+/// The internal resolution. F8 set 480×270; ed-slopper asked for a roomier view, so it is 4:3 now, the full
+/// height of the window.
 pub const VIEW_W: u32 = 480;
-pub const VIEW_H: u32 = 270;
+pub const VIEW_H: u32 = 360;
+/// OURS: the camera stands this far behind the centre of the party's tile, so the walls beside the party are in
+/// view (the usual trick of tile-based crawlers, R14).
+pub const BACK: f32 = 0.38;
 /// OURS: eye height above the floor of the party's tile.
 pub const EYE: f32 = 0.62;
 /// Light, in Bevy's physical units (lumens, cd/m²) at its default camera exposure. OURS: the party's lantern is
 /// bright near and gone by ten tiles; torches light a room; a little ambient keeps the far dark readable.
-pub const PARTY_LIGHT: f32 = 1_400_000.0;
-pub const TORCH_LIGHT: f32 = 350_000.0;
+pub const PARTY_LIGHT: f32 = 650_000.0;
+pub const TORCH_LIGHT: f32 = 280_000.0;
 pub const AMBIENT: f32 = 300.0;
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Default)]
@@ -40,6 +44,7 @@ pub enum Overlay {
     Spells,
     Pause,
     Map,
+    Help,
 }
 
 pub struct LogLine {
@@ -69,6 +74,11 @@ pub struct Game {
     pub cursor: usize,
     pub pause_cursor: usize,
     pub hurt_flash: f32,
+    /// A melee swing on screen: time left, and whether it hit.
+    pub slash: f32,
+    pub slash_hit: bool,
+    /// Resting: waiting until healed, stopped by danger.
+    pub resting: bool,
     pub member_flash: [f32; 4],
     pub end_timer: Option<f32>,
     pub debug: bool,
@@ -89,6 +99,9 @@ impl Game {
             cursor: 0,
             pause_cursor: 0,
             hurt_flash: 0.0,
+            slash: 0.0,
+            slash_hit: false,
+            resting: false,
             member_flash: [0.0; 4],
             end_timer: None,
             debug: false,
@@ -99,6 +112,24 @@ impl Game {
         g.say(format!("Depth {depth}: {theme}. Seed {}.", g.sim.state.seed_text));
         g.say("Find the stairs down. At the bottom waits the great chest.");
         g
+    }
+    /// An awake monster the party can see, within eight tiles.
+    pub fn danger(&self) -> bool {
+        let s = &self.sim.state;
+        s.level.monsters.iter().any(|m| m.hp > 0 && m.awake && m.pos.flat_dist(s.pos) <= 8 && lac_sim::monster::line_of_sight(&s.level, s.pos, m.pos))
+    }
+    /// Everyone alive has full health and mana.
+    pub fn rested(&self) -> bool {
+        self.sim.state.party.iter().filter(|m| m.alive()).all(|m| m.hp >= m.max_hp && m.mp >= m.max_mp && m.poison == 0)
+    }
+
+    /// Who drinks, reads and wears: the selected member, or the first one alive if they have fallen.
+    pub fn actor(&self) -> usize {
+        let p = &self.sim.state.party;
+        if p.get(self.selected).is_some_and(|m| m.alive()) {
+            return self.selected;
+        }
+        p.iter().position(|m| m.alive()).unwrap_or(self.selected)
     }
     pub fn say(&mut self, s: impl Into<String>) {
         self.log.push(LogLine { text: s.into(), age: 0.0 });
@@ -181,6 +212,50 @@ pub struct Bolt {
 #[derive(Resource, Default)]
 pub struct ChunkMap(pub BTreeMap<SIVec3, Entity>);
 
+/// How far open each door is (0 shut, 1 open), kept across rebuilds so doors swing instead of snapping.
+#[derive(Resource, Default)]
+pub struct DoorAngles(pub BTreeMap<(u8, SIVec3), f32>);
+
+/// A door on screen. OURS: wooden doors swing 90° on a hinge at one edge; portcullises slide up.
+#[derive(Component, Clone, Copy)]
+pub struct DoorView {
+    pub key: (u8, SIVec3),
+    pub closed: Transform,
+    pub portcullis: bool,
+    pub open: bool,
+}
+
+impl DoorView {
+    /// The door's transform when `frac` open.
+    pub fn at(&self, frac: f32) -> Transform {
+        let mut tr = self.closed;
+        if self.portcullis {
+            tr.translation.y += 0.88 * frac;
+            return tr;
+        }
+        // the hinge sits at the door's left edge; the panel turns about it
+        let hinge = Vec3::new(-0.47, 0.0, 0.0);
+        let turn = Quat::from_rotation_y(frac * std::f32::consts::FRAC_PI_2);
+        let centre = hinge + turn * Vec3::new(0.47, 0.0, 0.0);
+        tr.translation = self.closed.translation + self.closed.rotation * centre;
+        tr.rotation = self.closed.rotation * turn;
+        tr
+    }
+}
+
+/// Swing doors towards where the sim says they are.
+pub fn animate_doors(time: Res<Time>, mut doors: ResMut<DoorAngles>, mut q: Query<(&DoorView, &mut Transform)>) {
+    let step = time.delta_secs() * 3.0;
+    for (v, mut tr) in &mut q {
+        let f = doors.0.entry(v.key).or_insert(if v.open { 1.0 } else { 0.0 });
+        let target = if v.open { 1.0 } else { 0.0 };
+        if (*f - target).abs() > f32::EPSILON {
+            *f = if *f < target { (*f + step).min(target) } else { (*f - step).max(target) };
+            *tr = v.at(*f);
+        }
+    }
+}
+
 #[derive(Resource, Clone)]
 pub struct ViewImage(pub Handle<Image>);
 
@@ -243,6 +318,7 @@ pub fn spawn_world(
     cache.meshes.clear();
     commands.insert_resource(cache);
     commands.insert_resource(ChunkMap::default());
+    commands.insert_resource(DoorAngles::default());
     let s = &game.sim.state;
     let eye0 = tile_pos(s.pos) + Vec3::Y * EYE;
     commands.insert_resource(Anim { path: vec![(eye0, 0.0)], yaw_from: yaw(s.facing), yaw_to: yaw(s.facing), t: 1.0, dur: 1.0, ..default() });
@@ -252,9 +328,11 @@ pub fn spawn_world(
         Camera3d::default(),
         Camera { order: -1, clear_color: ClearColorConfig::Custom(fog), ..default() },
         RenderTarget::Image(view.into()),
-        Projection::Perspective(PerspectiveProjection { fov: 70f32.to_radians(), near: 0.05, ..default() }),
-        Transform::from_translation(eye).with_rotation(Quat::from_rotation_y(yaw(s.facing))),
+        Projection::Perspective(PerspectiveProjection { fov: 74f32.to_radians(), near: 0.05, ..default() }),
+        Transform::from_translation(eye + Quat::from_rotation_y(yaw(s.facing)) * Vec3::new(0.0, 0.0, BACK)).with_rotation(Quat::from_rotation_y(yaw(s.facing))),
         Msaa::Off,
+        // OURS: the brightness option shifts the exposure; 1.0 is Bevy's default (EV100 9.7)
+        bevy::camera::Exposure { ev100: bevy::camera::Exposure::EV100_BLENDER - settings.file.brightness.clamp(0.25, 8.0).log2() },
         DistanceFog { color: fog, falloff: FogFalloff::Linear { start: 2.5, end: 11.0 }, ..default() },
         PartyCam,
         WorldEntity,
@@ -267,7 +345,9 @@ pub fn spawn_world(
         // OURS: the party carries a warm light (R50-R53 say nothing of light sources)
         c.spawn((
             PointLight { color: Color::srgb(1.0, 0.8, 0.55), intensity: PARTY_LIGHT, range: 12.0, ..default() },
-            Transform::from_xyz(0.0, 0.05, 0.1),
+            // a tile behind and a little above the eye: walls right in front don't burn white, while rooms
+            // ahead stay lit (OURS)
+            Transform::from_xyz(0.0, 0.25, 1.1),
             PartyLight,
         ));
     });
@@ -330,6 +410,24 @@ pub fn input(
             } else if pressed(C::Map) {
                 game.overlay = Overlay::Map;
                 game.dirty.hud = true;
+            } else if pressed(C::Rest) {
+                if game.danger() {
+                    game.say("You can't rest with enemies near.");
+                } else if game.rested() {
+                    game.say("Everyone is rested.");
+                } else {
+                    game.resting = true;
+                    game.say("You rest...");
+                }
+            } else if pressed(C::Note) {
+                // R60: marks on the map: each press cycles the mark here, the fifth takes it away
+                let s = &game.sim.state;
+                let cur = s.level.notes.get(&(s.pos.x, s.pos.z)).copied().unwrap_or(0);
+                game.push(Action::Note { mark: (cur + 1) % 5 });
+                game.dirty.hud = true;
+            } else if pressed(C::Help) {
+                game.overlay = Overlay::Help;
+                game.dirty.hud = true;
             } else if pressed(C::Menu) {
                 game.overlay = Overlay::Pause;
                 game.pause_cursor = 0;
@@ -356,7 +454,7 @@ pub fn input(
                 game.selected = (game.selected + 1) % 4;
                 game.dirty.hud = true;
             }
-            let member = game.selected as u8;
+            let member = game.actor() as u8;
             if keys.just_pressed(KeyCode::Enter) || keys.just_pressed(KeyCode::KeyE) || keys.just_pressed(KeyCode::KeyF) {
                 if game.cursor < 7 {
                     let slot = lac_sim::content::Slot::ALL[game.cursor];
@@ -395,6 +493,12 @@ pub fn input(
                 }
             }
             if pressed(C::Spells) || pressed(C::Menu) {
+                game.overlay = Overlay::None;
+                game.dirty.hud = true;
+            }
+        }
+        Overlay::Help => {
+            if pressed(C::Help) || pressed(C::Menu) {
                 game.overlay = Overlay::None;
                 game.dirty.hud = true;
             }
@@ -493,6 +597,21 @@ pub fn playback(
             game.sim.push(a);
         }
     }
+    // OURS: resting is waiting, fast, until healed or until danger shows
+    if game.resting {
+        if game.danger() {
+            game.resting = false;
+            game.sim.clear_queue();
+            game.say("Something stirs. You stop resting.");
+        } else if game.rested() || game.sim.state.outcome != Outcome::Playing {
+            game.resting = false;
+            game.say("Rested.");
+        } else if game.sim.queued() == 0 {
+            for _ in 0..4 {
+                game.sim.push(Action::Wait);
+            }
+        }
+    }
     // the end of the run, once the last animation has played
     if game.sim.state.outcome != Outcome::Playing && game.sim.queued() == 0 {
         let t = game.end_timer.get_or_insert(2.2);
@@ -513,7 +632,8 @@ pub fn playback(
         game.write_recording();
     }
     let factor = speed(queued.saturating_sub(1));
-    let start = cam.translation;
+    // the path runs through tile centres; the camera sits BACK behind them
+    let start = cam.translation - cam.rotation * Vec3::new(0.0, 0.0, BACK);
     let start_yaw = anim.yaw_to;
     let mut path = vec![(start, 0.0)];
     let mut yaw_to = start_yaw;
@@ -610,6 +730,8 @@ pub fn playback(
             Event::PartyAttack { hit, target, ranged, .. } => {
                 if !ranged {
                     lunge = 1.0;
+                    game.slash = 0.2;
+                    game.slash_hit = *hit;
                 }
                 base = base.max(0.22);
                 if target.is_some() {
@@ -619,6 +741,11 @@ pub fn playback(
                 }
             }
             Event::CharacterHurt { member, .. } => {
+                if game.resting {
+                    game.resting = false;
+                    game.sim.clear_queue();
+                    game.say("Hurt! You stop resting.");
+                }
                 game.hurt_flash = 1.0;
                 if let Some(f) = game.member_flash.get_mut(*member as usize) {
                     *f = 1.0;
@@ -742,6 +869,7 @@ pub fn animate(
     let dt = time.delta_secs();
     game.frame_ms = game.frame_ms * 0.9 + dt * 1000.0 * 0.1;
     game.hurt_flash = (game.hurt_flash - dt * 2.5).max(0.0);
+    game.slash = (game.slash - dt).max(0.0);
     for f in &mut game.member_flash {
         *f = (*f - dt * 2.0).max(0.0);
     }
@@ -773,7 +901,7 @@ pub fn animate(
         let yaw_now = lerp_angle(anim.yaw_from, anim.yaw_to, ease);
         let rot = Quat::from_rotation_y(yaw_now);
         let lunge = anim.lunge * (t * std::f32::consts::PI).sin() * 0.12;
-        cam.translation = p + rot * Vec3::new(0.0, 0.0, -lunge);
+        cam.translation = p + rot * Vec3::new(0.0, 0.0, BACK - lunge);
         cam.rotation = rot;
     }
     let time_s = time.elapsed_secs();
@@ -862,6 +990,7 @@ pub fn rebuild_features(
     views: Query<Entity, With<FeatureView>>,
     monsters: Query<(Entity, &MonsterView)>,
     settings: Res<Settings>,
+    mut doors: ResMut<DoorAngles>,
 ) {
     if !std::mem::take(&mut game.dirty.features) {
         return;
@@ -877,6 +1006,7 @@ pub fn rebuild_features(
     let glow = cache.glow.clone();
     for (p, f) in &lvl.features {
         let base = tile_pos(*p);
+        let mut door_view: Option<DoorView> = None;
         let (key, model, tr): (String, fn() -> (models::VoxModel, f32), Transform) = match f {
             Feature::Chest { open, facing, .. } => (
                 format!("chest{open}"),
@@ -905,19 +1035,12 @@ pub fn rebuild_features(
             }
             Feature::Door { open, portcullis, .. } => {
                 let walls_x = lvl.world.solid(*p + SIVec3::new(1, 0, 0)) && lvl.world.solid(*p + SIVec3::new(-1, 0, 0));
-                let mut tr = Transform::from_translation(base).with_rotation(Quat::from_rotation_y(if walls_x { 0.0 } else { std::f32::consts::FRAC_PI_2 }));
-                if *open {
-                    if *portcullis {
-                        tr.translation.y += 0.88;
-                    } else {
-                        // swung against the wall
-                        tr.rotate_y(std::f32::consts::FRAC_PI_2);
-                        let side = tr.rotation * Vec3::new(0.0, 0.0, 0.45);
-                        tr.translation += side;
-                        let along = Quat::from_rotation_y(if walls_x { 0.0 } else { std::f32::consts::FRAC_PI_2 }) * Vec3::new(-0.45, 0.0, 0.0);
-                        tr.translation += along;
-                    }
-                }
+                let closed = Transform::from_translation(base).with_rotation(Quat::from_rotation_y(if walls_x { 0.0 } else { std::f32::consts::FRAC_PI_2 }));
+                let key = (lvl.depth, *p);
+                let frac = *doors.0.entry(key).or_insert(if *open { 1.0 } else { 0.0 });
+                let view = DoorView { key, closed, portcullis: *portcullis, open: *open };
+                let tr = view.at(frac);
+                door_view = Some(view);
                 (
                     format!("door{portcullis}"),
                     if *portcullis { || (models::door_model(true), 1.0) } else { || (models::door_model(false), 1.0) },
@@ -937,7 +1060,10 @@ pub fn rebuild_features(
         };
         let mesh = cache.get(&key, &mut meshes, vision, model);
         let m = if key == "torch" { glow.clone() } else { mat.clone() };
-        commands.spawn((Mesh3d(mesh), MeshMaterial3d(m), tr, FeatureView));
+        let mut e = commands.spawn((Mesh3d(mesh), MeshMaterial3d(m), tr, FeatureView));
+        if let Some(v) = door_view.take() {
+            e.insert(v);
+        }
     }
     for (p, items) in &lvl.items {
         for (k, it) in items.iter().enumerate().take(6) {
@@ -982,6 +1108,110 @@ pub fn rebuild_features(
             Transform::from_translation(pos).with_rotation(Quat::from_rotation_y(yaw(m.facing))),
             MonsterView { id, from: pos, to: pos, yaw_from: yaw(m.facing), yaw_to: yaw(m.facing), dying: None, flash: 0.0, lunge: 0.0, flies: def.flies, depth: lvl.depth },
         ));
+    }
+}
+
+/// Brightness keys in play: `[` darker, `]` brighter (saved with the settings).
+pub fn brightness_keys(keys: Res<ButtonInput<KeyCode>>, mut settings: ResMut<Settings>, mut game: ResMut<Game>) {
+    let up = keys.just_pressed(KeyCode::BracketRight);
+    let down = keys.just_pressed(KeyCode::BracketLeft);
+    if !up && !down {
+        return;
+    }
+    let b = &mut settings.file.brightness;
+    *b = if up { (*b * 1.25).min(8.0) } else { (*b / 1.25).max(0.25) };
+    let pct = (*b * 100.0).round();
+    settings.save();
+    game.say(format!("Brightness {pct}%"));
+}
+
+pub fn apply_exposure(settings: Res<Settings>, mut cam: Query<&mut bevy::camera::Exposure, With<PartyCam>>) {
+    if !settings.is_changed() {
+        return;
+    }
+    for mut e in &mut cam {
+        e.ev100 = bevy::camera::Exposure::EV100_BLENDER - settings.file.brightness.clamp(0.25, 8.0).log2();
+    }
+}
+
+/// A health bar over a hurt monster (R61), turned to the camera. OURS: shown once a monster is hurt.
+#[derive(Component)]
+pub struct HpBar {
+    pub id: u32,
+    pub fill: bool,
+}
+
+#[derive(Resource)]
+pub struct BarAssets {
+    pub mesh: Handle<Mesh>,
+    pub back: Handle<StandardMaterial>,
+    pub front: Handle<StandardMaterial>,
+}
+
+pub fn setup_bars(mut commands: Commands, mut meshes: ResMut<Assets<Mesh>>, mut mats: ResMut<Assets<StandardMaterial>>) {
+    commands.insert_resource(BarAssets {
+        mesh: meshes.add(Rectangle::new(1.0, 1.0)),
+        back: mats.add(StandardMaterial { base_color: Color::srgb(0.08, 0.06, 0.06), unlit: true, ..default() }),
+        front: mats.add(StandardMaterial { base_color: Color::srgb(0.35, 0.85, 0.25), unlit: true, ..default() }),
+    });
+}
+
+pub fn monster_bars(
+    mut commands: Commands,
+    game: Res<Game>,
+    assets: Res<BarAssets>,
+    cam: Single<&Transform, (With<PartyCam>, Without<HpBar>, Without<MonsterView>)>,
+    views: Query<(&MonsterView, &Transform), Without<HpBar>>,
+    mut bars: Query<(Entity, &HpBar, &mut Transform, &mut Visibility), Without<MonsterView>>,
+) {
+    let lvl = &game.sim.state.level;
+    let hp = |id: u32| lvl.monsters.iter().find(|m| m.id == id).map(|m| (m.hp, m.max_hp));
+    let mut have = std::collections::BTreeSet::new();
+    for (e, bar, mut tr, mut vis) in &mut bars {
+        let view = views.iter().find(|(v, _)| v.id == bar.id && v.depth == lvl.depth);
+        let (Some((v, vt)), Some((h, max))) = (view, hp(bar.id)) else {
+            commands.entity(e).despawn();
+            continue;
+        };
+        have.insert((bar.id, bar.fill));
+        if h >= max || h <= 0 || v.dying.is_some() {
+            *vis = Visibility::Hidden;
+            continue;
+        }
+        *vis = Visibility::Visible;
+        let def = game.sim.content.monster(&lvl.monsters.iter().find(|m| m.id == bar.id).unwrap().kind);
+        let top = if def.special && def.model == "warden" { 1.7 } else { 1.08 };
+        let frac = h as f32 / max as f32;
+        let w = 0.5;
+        let toward = (cam.translation - vt.translation).with_y(0.0).normalize_or_zero();
+        let rot = Quat::from_rotation_arc(Vec3::Z, if toward == Vec3::ZERO { Vec3::Z } else { toward });
+        let right = rot * Vec3::X;
+        let base = vt.translation + Vec3::Y * top;
+        if bar.fill {
+            tr.translation = base - right * (w * (1.0 - frac) / 2.0) + toward * 0.01;
+            tr.scale = Vec3::new(w * frac, 0.045, 1.0);
+        } else {
+            tr.translation = base;
+            tr.scale = Vec3::new(w + 0.03, 0.07, 1.0);
+        }
+        tr.rotation = rot;
+    }
+    for m in &lvl.monsters {
+        if m.hp <= 0 || m.hp >= m.max_hp {
+            continue;
+        }
+        for fill in [false, true] {
+            if !have.contains(&(m.id, fill)) {
+                commands.spawn((
+                    Mesh3d(assets.mesh.clone()),
+                    MeshMaterial3d(if fill { assets.front.clone() } else { assets.back.clone() }),
+                    Transform::from_scale(Vec3::ZERO),
+                    Visibility::Hidden,
+                    HpBar { id: m.id, fill },
+                    WorldEntity,
+                ));
+            }
+        }
     }
 }
 

@@ -32,6 +32,7 @@ pub enum Screen {
     NewRun,
     Options,
     Keys,
+    Loading,
     Playing,
     End,
 }
@@ -254,7 +255,7 @@ fn main() {
         .add_plugins(
             DefaultPlugins
                 .set(WindowPlugin {
-                    primary_window: Some(Window { title: "Chest and Lever".into(), resolution: WindowResolution::new(1280, 780), ..default() }),
+                    primary_window: Some(Window { title: "Chest and Lever".into(), resolution: WindowResolution::new(1560, 900), ..default() }),
                     ..default()
                 })
                 .set(ImagePlugin::default_nearest()),
@@ -290,6 +291,14 @@ fn main() {
         .add_systems(OnEnter(Screen::End), menu::end_enter)
         .add_systems(Update, menu::end_update.run_if(in_state(Screen::End)))
         .add_systems(OnExit(Screen::End), menu::clear)
+        .add_systems(OnEnter(Screen::Loading), menu::loading_enter)
+        .add_systems(Update, menu::loading_update.run_if(in_state(Screen::Loading)))
+        .add_systems(OnExit(Screen::Loading), menu::clear)
+        .add_observer(hud::on_click)
+        .add_observer(hud::on_over)
+        .add_observer(hud::on_out)
+        .init_resource::<hud::Hover>()
+        .add_systems(Update, (hud::update_tooltip, hud::update_slash).run_if(in_state(Screen::Playing)))
         .add_systems(OnEnter(Screen::Playing), (start_run, game::spawn_world, hud::spawn_hud, start_ambient).chain())
         .add_systems(
             Update,
@@ -297,6 +306,10 @@ fn main() {
                 .chain()
                 .run_if(in_state(Screen::Playing)),
         )
+        .add_systems(Update, (game::brightness_keys, game::apply_exposure, game::animate_doors).chain().run_if(in_state(Screen::Playing)))
+        .add_systems(Update, game::monster_bars.after(game::animate).run_if(in_state(Screen::Playing)))
+        .add_systems(Startup, game::setup_bars)
+        .add_systems(Update, hud::fit_view.run_if(in_state(Screen::Playing)))
         .add_systems(OnExit(Screen::Playing), (hud::despawn_hud, stop_ambient, game::despawn_world).chain())
         .run();
 }

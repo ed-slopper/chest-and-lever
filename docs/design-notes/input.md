@@ -15,6 +15,8 @@ Row E6. Code: `lac-rs/src/settings.rs`, `game.rs` (`input`).
   - Move and turn: W/S/A/D step, Q/E turn (the arrow keys and the number pad work too).
   - Actions: Space jump, Shift long jump, F/Enter use, R/Ctrl attack, Z/./Num5 wait, G pick up.
   - Screens: I/Tab inventory, C spells, M map, F3 debug, Esc menu.
+  - T rests (waits, fast, until everyone is healed; stops when an awake monster is in sight or someone is hurt);
+    N marks the map.
   - 1-4 pick a party member.
 - Gamepad: the D-pad steps and turns, the shoulder buttons strafe, A jumps, B long-jumps, X uses, Y attacks,
   Start opens the menu, Select the inventory.

@@ -93,7 +93,7 @@ impl MeshData {
 }
 
 /// OURS: a fixed shade per face direction, for the old-school look: tops brightest, bottoms darkest.
-const SHADE: [f32; 6] = [0.80, 0.80, 1.0, 0.55, 0.90, 0.70];
+const SHADE: [f32; 6] = [0.80, 0.80, 0.88, 0.55, 0.90, 0.70];
 const LIQUID_TOP: f32 = 0.38;
 const T: f32 = TILE as f32;
 
@@ -210,7 +210,8 @@ fn face(m: &mut MeshData, world: &World, tex: &[Tex], p: IVec3, fr: &Frame) {
                 || (j == 0 && b_lo_v == Border::Convex)
                 || (j == TILE - 1 && b_hi_v == Border::Convex);
             // OURS: ceilings stay flat; nobody looks up long enough to pay for their relief
-            *v = if flush || fr.n.y < 0 { 0 } else { t[j][i].depth };
+            // floors carve one step at most: deeper reads as rubble underfoot
+            *v = if flush || fr.n.y < 0 { 0 } else if fr.n.y > 0 { t[j][i].depth.min(1) } else { t[j][i].depth };
         }
     }
     // the faces of each depth, merged into rectangles

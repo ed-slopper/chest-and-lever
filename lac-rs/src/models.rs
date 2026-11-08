@@ -340,10 +340,100 @@ fn knight(warden: bool) -> VoxModel {
     m
 }
 
+fn bat() -> VoxModel {
+    // a small body between ragged wings, held up high
+    let mut m = VoxModel::new(16, 16, 6);
+    let skin = ix(VIOLET, 1);
+    let wing = ix(VIOLET, 2);
+    m.fill(6, 8, 9, 13, 2, 4, skin); // body (left half)
+    m.fill(6, 8, 13, 15, 2, 4, skin); // head
+    m.fill(6, 7, 15, 16, 2, 3, skin); // ear
+    for (k, x) in (0..6).enumerate() {
+        let top = 14 - (k as i32 / 2);
+        let bottom = 10 + (k as i32 % 3);
+        m.fill(x, x + 1, bottom, top, 2, 3, wing);
+    }
+    m.fill(1, 6, 13, 14, 2, 3, ix(VIOLET, 3)); // wing bone
+    m.mirror_x();
+    m.set(6, 14, 1, ix(RED, 6));
+    m.set(9, 14, 1, ix(RED, 6));
+    m.lit = vec![ix(RED, 6)];
+    m.speckle(14);
+    m
+}
+
+fn crow() -> VoxModel {
+    let mut m = VoxModel::new(6, 8, 10);
+    let black = ix(GREY, 0);
+    m.fill(1, 5, 2, 6, 3, 8, black); // body
+    m.fill(2, 4, 5, 8, 1, 4, black); // head
+    m.fill(2, 4, 6, 7, 0, 1, ix(BONE, 3)); // beak
+    m.fill(2, 4, 3, 5, 8, 10, ix(GREY, 1)); // tail
+    m.fill(1, 2, 3, 6, 4, 8, ix(BLUE, 1)); // wings with a sheen
+    m.fill(4, 5, 3, 6, 4, 8, ix(BLUE, 1));
+    m.fill(2, 3, 0, 2, 5, 6, ix(BONE, 3)); // legs
+    m.fill(3, 4, 0, 2, 5, 6, ix(BONE, 3));
+    m.set(2, 7, 1, ix(FIRE, 6));
+    m.set(3, 7, 1, ix(FIRE, 6));
+    m.lit = vec![ix(FIRE, 6)];
+    m.speckle(15);
+    m
+}
+
+fn slime() -> VoxModel {
+    let mut m = VoxModel::new(12, 10, 12);
+    let c = ix(GREEN, 4);
+    for y in 0..10 {
+        let r = [6.0, 6.0, 5.8, 5.4, 5.0, 4.4, 3.8, 3.0, 2.2, 1.2][y as usize];
+        for z in 0..12 {
+            for x in 0..12 {
+                let dx = x as f32 - 5.5;
+                let dz = z as f32 - 5.5;
+                if dx * dx + dz * dz <= r * r {
+                    m.set(x, y, z, if (x + y + z) % 5 == 0 { ix(GREEN, 5) } else { c });
+                }
+            }
+        }
+    }
+    // a wide mouth and two dark eyes on the front
+    m.fill(3, 9, 2, 4, 0, 2, ix(GREEN, 0));
+    for x in [4, 6, 8] {
+        m.set(x, 3, 0, ix(BONE, 6));
+    }
+    m.fill(3, 5, 6, 8, 1, 2, ix(GREY, 0));
+    m.fill(7, 9, 6, 8, 1, 2, ix(GREY, 0));
+    m.speckle(16);
+    m
+}
+
+fn wolf() -> VoxModel {
+    let mut m = VoxModel::new(8, 11, 18);
+    let fur = ix(GREY, 2);
+    let dark = ix(GREY, 1);
+    m.fill(2, 6, 4, 8, 4, 15, fur); // body
+    m.fill(2, 6, 7, 8, 5, 14, dark); // back
+    m.fill(2, 6, 5, 10, 1, 5, fur); // head
+    m.fill(3, 5, 5, 7, 0, 2, ix(GREY, 3)); // muzzle
+    m.fill(3, 5, 5, 6, 0, 1, ix(GREY, 0)); // nose
+    m.fill(2, 3, 10, 11, 2, 3, dark); // ears
+    m.fill(5, 6, 10, 11, 2, 3, dark);
+    for z in [5, 13] {
+        m.fill(2, 3, 0, 4, z, z + 2, fur); // legs
+        m.fill(5, 6, 0, 4, z, z + 2, fur);
+    }
+    m.fill(3, 5, 6, 8, 15, 18, dark); // tail
+    m.set(2, 8, 1, ix(RED, 6));
+    m.set(5, 8, 1, ix(RED, 6));
+    m.fill(3, 5, 4, 5, 1, 2, ix(BONE, 6)); // teeth
+    m.lit = vec![ix(RED, 6)];
+    m.speckle(17);
+    m
+}
+
 pub fn chest_model(open: bool, mimic: bool) -> VoxModel {
     let mut m = VoxModel::new(14, 12, 10);
     let wood = ix(BROWN, 3);
-    let band = ix(GREY, 4);
+    let band = ix(GREY, 1);
     m.fill(0, 14, 0, 7, 1, 10, wood);
     m.fill(0, 14, 0, 7, 3, 4, band);
     m.fill(0, 14, 0, 7, 7, 8, band);
@@ -504,6 +594,10 @@ pub fn monster_model(model: &str) -> (VoxModel, f32) {
         "knight" => (knight(false), 1.05),
         "mimic" => (chest_model(true, true), 1.0),
         "warden" => (knight(true), 1.5),
+        "bat" => (bat(), 0.9),
+        "crow" => (crow(), 1.0),
+        "slime" => (slime(), 1.3),
+        "wolf" => (wolf(), 1.15),
         _ => (shambler(), 1.0),
     }
 }

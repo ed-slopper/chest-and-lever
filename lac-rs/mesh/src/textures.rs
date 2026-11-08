@@ -128,9 +128,7 @@ fn cobble(salt: u32) -> Tex {
         if gap < 1.2 {
             (ix(GREY, 1), 2)
         } else {
-            // stones round off towards their edges
-            let edge = gap < 2.4;
-            (ix(GREY, 3 + (best.2 % 3) as u8 + if noise(x, y, salt, 9) == 0 { 1 } else { 0 }), edge as u8)
+            (ix(GREY, 3 + (best.2 % 3) as u8 + if noise(x, y, salt, 9) == 0 { 1 } else { 0 }), 0)
         }
     })
 }

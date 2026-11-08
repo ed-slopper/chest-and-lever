@@ -149,7 +149,7 @@ pub fn title_update(
         match items[menu.cursor] {
             "Continue" => {
                 start.load = true;
-                next.set(Screen::Playing);
+                next.set(Screen::Loading);
             }
             "New run" => next.set(Screen::NewRun),
             "Options" => next.set(Screen::Options),
@@ -257,7 +257,7 @@ pub fn newrun_update(
     if keys.just_pressed(KeyCode::Enter) && !menu.seed.trim().is_empty() {
         start.seed = Some(menu.seed.trim().to_string());
         start.load = false;
-        next.set(Screen::Playing);
+        next.set(Screen::Loading);
         return;
     }
     if !std::mem::take(&mut menu.dirty) {
@@ -277,7 +277,7 @@ pub fn newrun_update(
 
 // ------------------------------------------------------------------ options (X4) and keys (E6)
 
-const OPTION_ROWS: usize = 8;
+const OPTION_ROWS: usize = 9;
 
 pub fn options_enter(mut menu: ResMut<Menu>) {
     menu.cursor = 0;
@@ -329,11 +329,15 @@ pub fn options_update(
             f.ssao = !f.ssao;
             changed = true;
         }
-        6 if enter => {
+        6 if left || right => {
+            f.brightness = if right { (f.brightness * 1.25).min(8.0) } else { (f.brightness / 1.25).max(0.25) };
+            changed = true;
+        }
+        7 if enter => {
             next.set(Screen::Keys);
             return;
         }
-        7 if enter => {
+        8 if enter => {
             next.set(Screen::Title);
             return;
         }
@@ -362,6 +366,7 @@ pub fn options_update(
         format!("Colours: {}", f.vision.name()),
         format!("Resolution: {}x{}", 480 * f.res_scale as u32, 270 * f.res_scale as u32),
         format!("Ambient occlusion (SSAO): {}", if f.ssao { "on" } else { "off" }),
+        format!("Brightness: {:.0}%", f.brightness * 100.0),
         "Key bindings...".to_string(),
         "Back".to_string(),
     ];
@@ -444,6 +449,28 @@ pub fn keys_enter(mut menu: ResMut<Menu>) {
     menu.cursor = 0;
     menu.rebinding = None;
     menu.dirty = true;
+}
+
+// ------------------------------------------------------------------ loading
+
+/// A screen while the level is made: shown for a couple of frames, then the work happens with it on screen.
+pub fn loading_enter(mut commands: Commands, mut images: ResMut<Assets<Image>>, settings: Res<Settings>, mut menu: ResMut<Menu>, start: Res<StartRun>) {
+    menu.timer = 0.0;
+    menu.cursor = 0;
+    let r = root(&mut commands);
+    let l = logo(&mut commands, &mut images, settings.file.vision, 70.0);
+    let what = if start.load { "Lighting the lanterns...".to_string() } else { format!("Descending into {}...", start.seed.clone().unwrap_or_default()) };
+    let t = text(&mut commands, what, 20.0, INK);
+    let h = text(&mut commands, "making the dungeon", 13.0, DIM);
+    commands.entity(r).add_children(&[l, t, h]);
+}
+
+pub fn loading_update(mut menu: ResMut<Menu>, mut next: ResMut<NextState<Screen>>) {
+    // wait two frames so the loading screen is drawn before the heavy work starts
+    menu.cursor += 1;
+    if menu.cursor >= 3 {
+        next.set(Screen::Playing);
+    }
 }
 
 // ------------------------------------------------------------------ the end (G11)

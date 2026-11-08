@@ -9,20 +9,8 @@ pub const RAMPS: usize = 8;
 pub const SHADES: usize = 8;
 pub const COLOURS: usize = RAMPS * SHADES;
 
-/// Ramp numbers.
-pub const GREY: u8 = 0;
-pub const BROWN: u8 = 1;
-pub const RED: u8 = 2;
-pub const GREEN: u8 = 3;
-pub const BLUE: u8 = 4;
-pub const FIRE: u8 = 5;
-pub const VIOLET: u8 = 6;
-pub const BONE: u8 = 7;
-
-/// The palette index of `shade` (0 dark .. 7 light) in `ramp`.
-pub const fn ix(ramp: u8, shade: u8) -> u8 {
-    ramp * SHADES as u8 + shade
-}
+/// Ramp numbers and indices live in `lac-mesh`, which builds the textures.
+pub use lac_mesh::pal::{ix, BLUE, BONE, BROWN, FIRE, GREEN, GREY, RED, VIOLET};
 
 /// Ranges that cycle: (first index, length, steps per second). REF R54. OURS: water flows, lava churns,
 /// crystal glimmers.

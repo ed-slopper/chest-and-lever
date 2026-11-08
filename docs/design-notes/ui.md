@@ -17,6 +17,8 @@ Rows X1, X2, X4, G12, E11. Code: `lac-rs/src/hud.rs`, `menu.rs`.
   - the automap, centred on the party and turned so forward is up, and the main keys.
 - Mouse: click a card to choose who acts; click a pack item to use or wear it (the acting member, or the first
   one alive if they have fallen); right-click to drop it; click a worn item to take it off.
+- Hovering a slot, a card or the view shows a line under the cards: the item's name and what a click does.
+  Clicking the view uses what is in front (lever, door, chest); right-clicking it attacks.
 - Overlays on the view:
   - the inventory: worn items and the pack, with icons
   - spells
