@@ -338,3 +338,13 @@ fn nobody_jumps_over_a_closed_door() {
     s.tick(Action::StepForward);
     assert_eq!(s.state.pos, door);
 }
+
+#[test]
+fn one_member_can_strike_alone() {
+    let c = Content::builtin();
+    let mut s = test_sim();
+    lac_sim::levelgen::spawn(&mut s.state.level, &c, "shambler", IVec3::new(5, 1, 4), &mut lac_sim::rng::Mt19937::new(3), RunOptions::default());
+    let ev = s.tick(Action::AttackWith { member: 0 });
+    let strikers: Vec<u8> = ev.iter().filter_map(|e| if let Event::PartyAttack { member, .. } = e { Some(*member) } else { None }).collect();
+    assert_eq!(strikers, vec![0], "only Brann struck");
+}

@@ -39,6 +39,8 @@ pub enum Action {
     Use,
     /// The whole party strikes (G9a).
     Attack,
+    /// One member strikes alone (clicking a portrait, as in the record's clip, R63).
+    AttackWith { member: u8 },
     Wait,
     Cast { member: u8, spell: Spell },
     /// Drink, read or zap the pack item at `index`; weapons, armour and jewellery are put on.
@@ -333,8 +335,16 @@ impl State {
             Action::LongJump => self.long_jump(c, ev),
             Action::Use => self.use_front(c, ev),
             Action::Attack => {
-                self.attack(c, ev);
+                self.attack(c, None, ev);
                 true
+            }
+            Action::AttackWith { member } => {
+                if self.party.get(member as usize).is_some_and(|m| m.alive()) {
+                    self.attack(c, Some(member as usize), ev);
+                    true
+                } else {
+                    false
+                }
             }
             Action::Wait => true,
             Action::Cast { member, spell } => self.cast(c, member as usize, spell, ev),
@@ -1011,10 +1021,10 @@ impl State {
 
     /// G9a: one Attack makes the whole party strike. Front row with any weapon at the monster in front; back
     /// row only with reach (at the monster in front) or ranged weapons (the first monster in line).
-    fn attack(&mut self, c: &Content, ev: &mut Vec<Event>) {
+    fn attack(&mut self, c: &Content, only: Option<usize>, ev: &mut Vec<Event>) {
         let front = self.level.monster_at(self.front());
         let mut anyone = false;
-        for i in self.living().collect::<Vec<_>>() {
+        for i in self.living().filter(|i| only.is_none_or(|o| o == *i)).collect::<Vec<_>>() {
             let (to_hit, dmg, bonus, reach, ranged) = self.party[i].attack_profile(c);
             let target = if ranged {
                 self.first_in_line(6)
@@ -1051,8 +1061,11 @@ impl State {
             }
         }
         if !anyone {
-            ev.push(Event::PartyAttack { member: 0, target: None, hit: false, damage: 0, ranged: false });
-            say(ev, "You swing at empty air.");
+            ev.push(Event::PartyAttack { member: only.unwrap_or(0) as u8, target: None, hit: false, damage: 0, ranged: false });
+            match only {
+                Some(i) => say(ev, format!("{} can't reach anything from there.", self.party[i].name)),
+                None => say(ev, "You swing at empty air."),
+            }
         }
     }
 

@@ -15,6 +15,9 @@ Rows X1, X2, X4, G12, E11. Code: `lac-rs/src/hud.rs`, `menu.rs`.
     shield, head, body), the portrait, health and mana bars, HP, mana, AC and poison;
   - the pack as a 6×4 grid of item icons, with gold and who is acting;
   - the automap, centred on the party and turned so forward is up, and the main keys.
+- Mouse (R63): a card's slots are two hands, a ring and an amulet, with faint glyphs when empty. Clicking a slot
+  opens a list of what fits, from the pack and from the others (labelled), plus taking it off; right-clicking a
+  worn item puts it in the pack. Clicking a portrait makes that member strike alone.
 - Mouse: click a card to choose who acts; click a pack item to use or wear it (the acting member, or the first
   one alive if they have fallen); right-click to drop it; click a worn item to take it off.
 - Hovering a slot, a card or the view shows a line under the cards: the item's name and what a click does.

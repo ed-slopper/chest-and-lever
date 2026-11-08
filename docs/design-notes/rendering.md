@@ -28,5 +28,7 @@ Rows E4, E7, E8, E9, C8, C9. Code: `lac-rs/src/voxel.rs`, `palette.rs`, `texture
 - Light: the party carries a warm point light, wall torches flicker with their own lights, and there is a dim
   ambient light. Fog colour comes from a strip of palette colours, one per depth: our reading of R53 for an
   underground game.
+- Particles (R63): spells, bolts and their impacts throw clouds of tiny glowing voxel cubes, with a light that
+  fades with them; a hit monster sheds a puff of dark debris.
 - Colour-blind palettes shift the clashing ramps (Options > Colours).
 - The splash spells the title in 5×7 dot-matrix letters, with lit dots bright and unlit ones faint.
