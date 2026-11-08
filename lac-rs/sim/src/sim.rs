@@ -519,13 +519,12 @@ impl State {
             }
             _ => {}
         }
-        if let Some(items) = self.level.items.get(&p) {
-            if !items.is_empty() {
+        if let Some(items) = self.level.items.get(&p)
+            && !items.is_empty() {
                 let names: Vec<String> = items.iter().take(4).map(|i| self.knowledge.name(c, i)).collect();
                 let more = if items.len() > 4 { ", ..." } else { "" };
                 say(ev, format!("Here: {}{more}", names.join(", ")));
             }
-        }
         if self.party_effect(c, |e| matches!(e, Effect::SeeSecrets)) {
             for d in Dir::ALL {
                 let q = p + d.delta();
@@ -761,11 +760,10 @@ impl State {
                 say(ev, "The chest grows teeth. A mimic!");
                 return true;
             }
-            if let Some(k) = lock {
-                if !self.try_lock(c, k, "chest", ev) {
+            if let Some(k) = lock
+                && !self.try_lock(c, k, "chest", ev) {
                     return true;
                 }
-            }
             if let Some(t) = trap {
                 let disarmed = match self.best_rogue() {
                     Some(r) => {
@@ -971,7 +969,7 @@ impl State {
     fn first_in_line(&self, range: i32) -> Option<usize> {
         let mut p = self.pos;
         for _ in 0..range {
-            p = p + self.facing.delta();
+            p += self.facing.delta();
             if let Some(i) = self.level.monster_at(p) {
                 return Some(i);
             }
@@ -986,7 +984,7 @@ impl State {
         let mut out = Vec::new();
         let mut p = self.pos;
         for _ in 0..range {
-            p = p + self.facing.delta();
+            p += self.facing.delta();
             if let Some(i) = self.level.monster_at(p) {
                 out.push(i);
             }
@@ -1121,6 +1119,24 @@ impl State {
         }
     }
 
+    /// OURS (board row G15): the dead stand up at a quarter of their hit points, and lose a level's worth of
+    /// nothing else; the price is the scroll or the spell.
+    fn raise(&mut self, ev: &mut Vec<Event>) {
+        let mut any = false;
+        for i in 0..self.party.len() {
+            if !self.party[i].alive() {
+                let m = &mut self.party[i];
+                m.hp = (m.max_hp / 4).max(1);
+                any = true;
+                say(ev, format!("{} gasps and stands up!", m.name));
+                ev.push(Event::CharacterHealed { member: i as u8, amount: m.hp });
+            }
+        }
+        if !any {
+            say(ev, "A warm wind passes. Nobody needed it.");
+        }
+    }
+
     fn heal(&mut self, i: usize, amount: i32, ev: &mut Vec<Event>) {
         let m = &mut self.party[i];
         if !m.alive() {
@@ -1134,12 +1150,11 @@ impl State {
     }
 
     fn check_lost(&mut self, ev: &mut Vec<Event>) {
-        if let Outcome::Lost { .. } = self.outcome {
-            if !ev.contains(&Event::Lost) {
+        if let Outcome::Lost { .. } = self.outcome
+            && !ev.contains(&Event::Lost) {
                 say(ev, "The whole party has fallen. The dungeon keeps them.");
                 ev.push(Event::Lost);
             }
-        }
     }
 
     // ---------------------------------------------------------------- spells (G10)
@@ -1206,6 +1221,10 @@ impl State {
                 }
                 say(ev, "A clean light washes over the party.");
             }
+            Spell::Raise => {
+                say(ev, format!("{name} calls the fallen back."));
+                self.raise(ev);
+            }
             Spell::Rebuke => {
                 say(ev, format!("{name} raises a holy sign!"));
                 let mut any = false;
@@ -1236,11 +1255,10 @@ impl State {
             }
             end = n;
         }
-        if let Some(&t) = targets.last() {
-            if !pierce {
+        if let Some(&t) = targets.last()
+            && !pierce {
                 end = self.level.monsters[t].pos;
             }
-        }
         ev.push(Event::Bolt { from: self.pos, to: end, fire });
         if targets.is_empty() {
             say(ev, "The bolt hits nothing.");
@@ -1331,12 +1349,11 @@ impl State {
                 if done >= n {
                     break;
                 }
-                if let Some(it) = self.party[m].equip.get_mut(&slot) {
-                    if !it.known {
+                if let Some(it) = self.party[m].equip.get_mut(&slot)
+                    && !it.known {
                         it.known = true;
                         done += 1;
                     }
-                }
             }
         }
         if done == 0 {
@@ -1449,7 +1466,7 @@ impl State {
                 let mut p = self.pos;
                 let mut changed = Vec::new();
                 for _ in 0..5 {
-                    p = p + self.facing.delta();
+                    p += self.facing.delta();
                     if self.level.features.get(&p) == Some(&Feature::SecretWall) {
                         self.reveal(p, ev);
                         continue;
@@ -1482,6 +1499,7 @@ impl State {
                 }
                 say(ev, if ts.is_empty() { "A drowsy mist drifts away." } else { "A drowsy mist rolls ahead. Something yawns." });
             }
+            Effect::Raise => self.raise(ev),
             Effect::Nothing => say(ev, "Nothing seems to happen."),
             Effect::Protection(_) | Effect::Regeneration | Effect::Teleportitis | Effect::Aggravate | Effect::Jumping | Effect::SeeSecrets => {
                 say(ev, "Nothing seems to happen.")
@@ -1526,22 +1544,19 @@ impl State {
         if two_handed {
             off.push(Slot::Shield);
         }
-        if slot == Slot::Shield {
-            if let Some(w) = self.party[i].equip.get(&Slot::Weapon) {
-                if matches!(c.item(&w.def).kind, ItemKind::Weapon { two_handed: true, .. }) {
+        if slot == Slot::Shield
+            && let Some(w) = self.party[i].equip.get(&Slot::Weapon)
+                && matches!(c.item(&w.def).kind, ItemKind::Weapon { two_handed: true, .. }) {
                     off.push(Slot::Weapon);
                 }
-            }
-        }
         for s in &off {
-            if let Some(w) = self.party[i].equip.get(s) {
-                if w.cursed {
+            if let Some(w) = self.party[i].equip.get(s)
+                && w.cursed {
                     let wn = self.knowledge.name(c, w);
                     self.party[i].equip.get_mut(s).unwrap().known = true;
                     say(ev, format!("{name}'s {wn} is cursed and won't come off!"));
                     return true;
                 }
-            }
         }
         let needed = off.iter().filter(|s| self.party[i].equip.contains_key(s)).count();
         if self.pack.len() - 1 + needed > PACK_SIZE {
@@ -1613,7 +1628,7 @@ impl State {
             }
             if self.party[i].poison > 0 {
                 self.party[i].poison -= 1;
-                if t % 2 == 0 {
+                if t.is_multiple_of(2) {
                     self.hurt(i, 1, "poison", ev);
                 }
                 if self.party[i].poison == 0 && self.party[i].alive() {
@@ -1623,11 +1638,11 @@ impl State {
             let m = &self.party[i];
             let regen = member_effect(c, m, |e| matches!(e, Effect::Regeneration));
             // OURS: everyone heals 1 every 20 ticks; casters regain 1 mana every 8
-            if (regen && t % 3 == 0) || t % 20 == 0 {
+            if (regen && t.is_multiple_of(3)) || t.is_multiple_of(20) {
                 self.heal(i, 1, ev);
             }
             let m = &mut self.party[i];
-            if m.max_mp > 0 && t % 8 == 0 {
+            if m.max_mp > 0 && t.is_multiple_of(8) {
                 m.mp = (m.mp + 1).min(m.max_mp);
             }
         }
@@ -1687,12 +1702,11 @@ impl State {
                 .into_iter()
                 .filter(|&t| self.level.monster_at(t).is_none() && t != self.pos)
                 .max_by_key(|t| (t.flat_manhattan(self.pos), std::cmp::Reverse(*t)));
-            if let Some(t) = best {
-                if t.flat_manhattan(self.pos) > pos.flat_manhattan(self.pos) {
+            if let Some(t) = best
+                && t.flat_manhattan(self.pos) > pos.flat_manhattan(self.pos) {
                     self.move_monster(idx, t, ev);
                     return;
                 }
-            }
         }
         if adjacent {
             if let Some(d) = Dir::between(pos, self.pos) {
@@ -1712,14 +1726,13 @@ impl State {
                 return;
             }
         }
-        if sees || aggravate || dist <= 3 {
-            if let Some(t) = monster::step_towards(&self.level, &def, pos, self.pos, 14) {
+        if (sees || aggravate || dist <= 3)
+            && let Some(t) = monster::step_towards(&self.level, &def, pos, self.pos, 14) {
                 if t != self.pos && self.level.monster_at(t).is_none() {
                     self.move_monster(idx, t, ev);
                 }
                 return;
             }
-        }
         // wander
         if self.rng.ai.chance(40) {
             let options: Vec<IVec3> = monster::moves_from(&self.level, &def, pos)

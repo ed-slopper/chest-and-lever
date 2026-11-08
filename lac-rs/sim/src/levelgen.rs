@@ -159,8 +159,8 @@ impl<'a> Gen<'a> {
                 if !inside[i] {
                     continue;
                 }
-                for j in 0..n {
-                    if inside[j] {
+                for (j, &taken) in inside.iter().enumerate() {
+                    if taken {
                         continue;
                     }
                     let dd = dist(&self.rooms[i], &self.rooms[j]);
@@ -617,8 +617,8 @@ impl<'a> Gen<'a> {
         while let Some(p) = q.pop_front() {
             let dp = dist[&p];
             let push = |t: IVec3, dist: &mut BTreeMap<IVec3, u32>, q: &mut VecDeque<IVec3>| {
-                if !dist.contains_key(&t) {
-                    dist.insert(t, dp + 1);
+                if let std::collections::btree_map::Entry::Vacant(e) = dist.entry(t) {
+                    e.insert(dp + 1);
                     q.push_back(t);
                 }
             };
@@ -629,11 +629,10 @@ impl<'a> Gen<'a> {
                         push(l, &mut dist, &mut q);
                     }
                     let t2 = t + d.delta();
-                    if !self.blocked(t2, &doors) {
-                        if let Some(l) = self.fall(t2, &doors) {
+                    if !self.blocked(t2, &doors)
+                        && let Some(l) = self.fall(t2, &doors) {
                             push(l, &mut dist, &mut q);
                         }
-                    }
                 }
                 let up = p.up();
                 if !self.blocked(up, &doors) {
@@ -741,12 +740,11 @@ impl<'a> Gen<'a> {
         let far: BTreeMap<IVec3, u32> = reach.iter().filter(|(p, _)| p.flat_dist(start) >= 6).map(|(p, d)| (*p, *d)).collect();
         let monsters = (5 + depth * 2).min(22);
         for _ in 0..monsters {
-            if let Some(p) = self.floor_spot(&far, Some(start)) {
-                if self.l.monster_at(p).is_none() {
+            if let Some(p) = self.floor_spot(&far, Some(start))
+                && self.l.monster_at(p).is_none() {
                     let kind = pick_monster(self.c, self.l.depth, &mut self.r);
                     spawn(&mut self.l, self.c, &kind, p, &mut self.r, self.options);
                 }
-            }
         }
         let chests = self.r.range(2, 4);
         for _ in 0..chests {
@@ -757,11 +755,10 @@ impl<'a> Gen<'a> {
                 .filter(|(p, _)| Dir::ALL.iter().filter(|d| self.l.world.solid(**p + d.delta())).count() >= 1)
                 .map(|(p, d)| (*p, *d))
                 .collect();
-            if let Some(p) = self.floor_spot(&room_cells, Some(start)) {
-                if self.l.monster_at(p).is_none() {
+            if let Some(p) = self.floor_spot(&room_cells, Some(start))
+                && self.l.monster_at(p).is_none() {
                     self.chest(p);
                 }
-            }
         }
         for _ in 0..self.r.range(3, 6) {
             if let Some(p) = self.floor_spot(reach, None) {
@@ -903,12 +900,11 @@ fn rooms(c: &Content, r: Mt19937, depth: u8, options: RunOptions) -> Option<Leve
     let mut far_room = None;
     let mut far_d = 0;
     for (p, d) in &reach {
-        if let Some(i) = g.room_at(p.x, p.z) {
-            if i != 0 && *d > far_d {
+        if let Some(i) = g.room_at(p.x, p.z)
+            && i != 0 && *d > far_d {
                 far_d = *d;
                 far_room = Some(i);
             }
-        }
     }
     let far_room = far_room?;
     if depth >= FINAL_DEPTH {

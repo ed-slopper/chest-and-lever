@@ -58,6 +58,7 @@
     "scroll_enchant_weapon": (name: "scroll of enchant weapon", kind: Scroll(effect: EnchantWeapon), depth: (1, 8), weight: 6, icon: "scroll"),
     "scroll_enchant_armor": (name: "scroll of enchant armour", kind: Scroll(effect: EnchantArmor), depth: (1, 8), weight: 6, icon: "scroll"),
     "scroll_fire": (name: "scroll of fire", kind: Scroll(effect: Fire("3d6")), depth: (2, 8), weight: 4, icon: "scroll"),
+    "scroll_raise": (name: "scroll of raise dead", kind: Scroll(effect: Raise), depth: (2, 8), weight: 3, icon: "scroll"),
     "scroll_blank": (name: "blank scroll", kind: Scroll(effect: Nothing), depth: (1, 8), weight: 2, icon: "scroll"),
 
     // ---- wands (unidentified until zapped or identified)

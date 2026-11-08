@@ -50,6 +50,8 @@ pub enum Effect {
     Jumping,
     /// Secret walls show themselves when the party stands next to them.
     SeeSecrets,
+    /// Every fallen member stands up again at a quarter of their hit points (board row G15).
+    Raise,
     /// No effect at all (a joke the dungeon plays).
     Nothing,
 }

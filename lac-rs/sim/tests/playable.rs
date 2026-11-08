@@ -41,11 +41,10 @@ fn reaches_goal(c: &Content, seed: u64, depth: u8) -> bool {
     q.push_back(start);
     let tries: [&[Action]; 3] = [&[Action::StepForward], &[Action::Jump, Action::StepForward], &[Action::LongJump]];
     while let Some(p) = q.pop_front() {
-        if let Some(g) = goal_chest {
-            if p.y == g.y && p.flat_manhattan(g) == 1 {
+        if let Some(g) = goal_chest
+            && p.y == g.y && p.flat_manhattan(g) == 1 {
                 return true;
             }
-        }
         for d in Dir::ALL {
             for seq in tries {
                 let mut s = base.clone();
@@ -72,9 +71,13 @@ fn reaches_goal(c: &Content, seed: u64, depth: u8) -> bool {
 #[test]
 fn levels_can_be_walked_to_the_goal() {
     let c = Content::builtin();
-    for seed in [1u64, 2, 3] {
+    let extra = std::env::var("LAC_SEEDS").unwrap_or_default();
+    let mut seeds: Vec<String> = vec!["BOT-1".into(), "BOT-2".into(), "PLAY-3".into()];
+    seeds.extend(extra.split(',').filter(|s| !s.is_empty()).map(String::from));
+    for seed in seeds {
+        let n = lac_sim::rng::seed_from_text(&seed);
         for depth in 1..=8u8 {
-            assert!(reaches_goal(&c, seed * 104_729, depth), "seed {seed} depth {depth}: the goal can't be reached with real moves");
+            assert!(reaches_goal(&c, n, depth), "seed {seed} depth {depth}: the goal can't be reached with real moves");
         }
     }
 }

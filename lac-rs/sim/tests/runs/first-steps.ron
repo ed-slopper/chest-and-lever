@@ -37,5 +37,5 @@
         member: 3,
         index: 3,
     ), LongJump, Attack, Attack, PickUp, StepLeft, Wait, StepLeft, TurnRight, StepForward, Attack, Attack, Use, Wait, StepForward, LongJump, Jump, StepLeft, PickUp, StepForward, Attack, TurnRight, Wait, StepForward, TurnRight, TurnRight, LongJump, PickUp, Jump, Attack, StepLeft, TurnLeft, StepForward, Wait, PickUp, StepForward, StepRight, StepForward, StepForward, StepForward, StepForward, Wait, StepForward, Wait, Jump, StepForward, Wait, StepForward, StepForward, StepForward, StepRight, TurnRight, Attack, TurnRight, Use, Attack, Attack, StepForward, StepForward, TurnLeft, StepLeft, StepForward, StepForward, Attack, Wait, TurnRight, StepRight, Attack, TurnRight, TurnLeft, TurnRight, StepLeft, StepForward, StepRight, StepRight, Attack, Use, PickUp, Attack, StepForward, Jump, StepForward, StepForward, StepLeft, StepForward, Attack, StepForward, Attack, Wait, Wait, Jump, StepForward, Jump, Wait, Use, StepForward, Jump, StepForward, Use, StepForward, Attack, TurnLeft, Wait, StepForward, StepForward, Attack, Wait, TurnRight, StepRight, Attack, StepForward, StepForward, StepForward, StepRight, StepLeft, Wait, TurnRight, StepForward, PickUp, StepForward, StepLeft],
-    expect: Some("00fe50391d91967d"),
+    expect: Some("43c29d1d5f184eee"),
 )

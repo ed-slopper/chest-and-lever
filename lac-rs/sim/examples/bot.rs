@@ -81,11 +81,10 @@ fn path(sim: &Sim, goal: impl Fn(IVec3) -> bool) -> Option<Vec<Move>> {
                     cands.push((l, Move::Step(d)));
                 }
                 let t2 = t + d.delta();
-                if open(sim, t2) && !door_closed(sim, t) && !door_closed(sim, t2) {
-                    if let Some(l) = fall(sim, t2) {
+                if open(sim, t2) && !door_closed(sim, t) && !door_closed(sim, t2)
+                    && let Some(l) = fall(sim, t2) {
                         cands.push((l, Move::LongJump(d)));
                     }
-                }
             }
             if open(sim, p.up()) {
                 let u = p.up() + d.delta();
@@ -94,8 +93,8 @@ fn path(sim: &Sim, goal: impl Fn(IVec3) -> bool) -> Option<Vec<Move>> {
                 }
             }
             for (to, m) in cands {
-                if !prev.contains_key(&to) {
-                    prev.insert(to, (p, m));
+                if let std::collections::btree_map::Entry::Vacant(e) = prev.entry(to) {
+                    e.insert((p, m));
                     q.push_back(to);
                 }
             }
@@ -135,11 +134,10 @@ fn decide(sim: &Sim, stuck: &mut u32) -> Vec<Action> {
             if let Some(t) = face(sim, d) {
                 return vec![t];
             }
-            if let Some(m) = s.party.iter().position(|q| q.alive() && q.class == Class::Mage && q.mp >= Spell::Spark.cost()) {
-                if s.tick % 2 == 0 {
+            if let Some(m) = s.party.iter().position(|q| q.alive() && q.class == Class::Mage && q.mp >= Spell::Spark.cost())
+                && s.tick.is_multiple_of(2) {
                     return vec![Action::Cast { member: m as u8, spell: Spell::Spark }];
                 }
-            }
             return vec![Action::Attack];
         }
     }
@@ -177,11 +175,10 @@ fn decide(sim: &Sim, stuck: &mut u32) -> Vec<Action> {
     match route.first() {
         None => {
             for d in Dir::ALL {
-                if let Some(Feature::Lever { on: false, face, .. }) = s.level.features.get(&(s.pos + d.delta())) {
-                    if *face == d.opposite() {
+                if let Some(Feature::Lever { on: false, face, .. }) = s.level.features.get(&(s.pos + d.delta()))
+                    && *face == d.opposite() {
                         return face_then(sim, d, Action::Use);
                     }
-                }
             }
             vec![Action::Wait]
         }
@@ -239,6 +236,12 @@ fn main() {
             }
         }
         let s = &sim.state;
+        if stuck >= 400 && std::env::var("BOT_WHY").is_ok() {
+            let stairs: Vec<_> = s.level.features.iter().filter(|(_, f)| matches!(f, Feature::Stairs { .. } | Feature::Chest { great: true, .. })).map(|(p, _)| *p).collect();
+            let gates: Vec<_> = s.level.features.iter().filter(|(_, f)| matches!(f, Feature::Door { open: false, .. } | Feature::Lever { .. })).map(|(p, f)| format!("{p:?} {f:?}")).collect();
+            println!("    stuck at {:?} depth {}; goal {stairs:?}
+    gates: {gates:#?}", s.pos, s.level.depth);
+        }
         let end = match &s.outcome {
             Outcome::Won => {
                 wins += 1;

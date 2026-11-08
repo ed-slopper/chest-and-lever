@@ -34,6 +34,7 @@ jobs:
           workspaces: lac-rs
           key: sim
       - run: cargo test -p lac-sim --release --locked
+      - run: rustup component add clippy && cargo clippy -p lac-sim --all-targets --locked -- -D warnings
 
   app:
     name: clippy and build (Bevy)
@@ -53,5 +54,6 @@ jobs:
         with:
           workspaces: lac-rs
           key: app
-      - run: cargo clippy --workspace --locked -- -D warnings
+      # the sim is held to every lint (job above); the app fails only on likely bugs
+      - run: cargo clippy -p lac --locked -- -D clippy::correctness -D clippy::suspicious
       - run: cargo build --locked

@@ -27,3 +27,7 @@ Rows G3, G4, C6, C7. Code: `lac-rs/sim/src/party.rs`, `lac-rs/src/hud.rs`, `icon
 - Everyone heals 1 HP every 20 ticks; casters regain 1 mana every 8.
 - The party shares one pack of 24 items. Gold doesn't take a slot.
 - Portraits are drawn in code, by class.
+- A fallen member can come back (board row G15): the priest's Raise (level 5, 14 mana) or a scroll of raise
+  dead stands every fallen member up at a quarter of their hit points.
+- Spells: the mage has Spark (level 1), Fireball (3) and Quicken (5); the priest has Mend (1), Purify (2),
+  Rebuke (3) and Raise (5).

@@ -484,10 +484,11 @@ fn spells(p: &mut ChildSpawnerCommands, sim: &Sim) {
             lac_sim::party::Spell::Mend => "heal the most hurt member",
             lac_sim::party::Spell::Purify => "cure everyone's poison",
             lac_sim::party::Spell::Rebuke => "burn every undead within three tiles",
+            lac_sim::party::Spell::Raise => "the fallen stand up again",
         };
         line(p, format!("{}. {} - {} ({} MP): {what}", k + 1, mem.name, sp.name(), sp.cost()), colour, 14.0);
     }
-    line(p, "Mages learn Fireball at level 3 and Quicken at 5; priests Purify at 2 and Rebuke at 3.", DIM, 12.0);
+    line(p, "Mages learn Fireball at level 3 and Quicken at 5; priests Purify at 2, Rebuke at 3 and Raise at 5.", DIM, 12.0);
 }
 
 fn pause_menu(p: &mut ChildSpawnerCommands, cursor: usize) {

@@ -67,10 +67,12 @@ pub enum Spell {
     Purify,
     /// Priest: burn every undead within three tiles.
     Rebuke,
+    /// Priest: the fallen stand up again (board row G15).
+    Raise,
 }
 
 impl Spell {
-    pub const ALL: [Spell; 6] = [Spell::Spark, Spell::Fireball, Spell::Quicken, Spell::Mend, Spell::Purify, Spell::Rebuke];
+    pub const ALL: [Spell; 7] = [Spell::Spark, Spell::Fireball, Spell::Quicken, Spell::Mend, Spell::Purify, Spell::Rebuke, Spell::Raise];
     pub fn class(self) -> Class {
         match self {
             Spell::Spark | Spell::Fireball | Spell::Quicken => Class::Mage,
@@ -85,6 +87,7 @@ impl Spell {
             Spell::Mend => 3,
             Spell::Purify => 3,
             Spell::Rebuke => 5,
+            Spell::Raise => 14,
         }
     }
     pub fn min_level(self) -> u8 {
@@ -92,7 +95,7 @@ impl Spell {
             Spell::Spark | Spell::Mend => 1,
             Spell::Purify => 2,
             Spell::Fireball | Spell::Rebuke => 3,
-            Spell::Quicken => 5,
+            Spell::Quicken | Spell::Raise => 5,
         }
     }
     pub fn name(self) -> &'static str {
@@ -103,6 +106,7 @@ impl Spell {
             Spell::Mend => "Mend",
             Spell::Purify => "Purify",
             Spell::Rebuke => "Rebuke",
+            Spell::Raise => "Raise",
         }
     }
     /// The spells of a class, in hotkey order.
