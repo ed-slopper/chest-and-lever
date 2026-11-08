@@ -97,6 +97,15 @@ fn art(name: &str) -> [&'static str; 12] {
             "............", "............", "............", "......kk....", ".....kyyk...", "...kkyYyk...", "..kyykyyk...", ".kyYyykkkk..",
             ".kyyykyyyyk.", "..kkkkyYyyk.", "......kkkk..", "............",
         ],
+        // dim glyphs for empty slots
+        "hand" => [
+            "............", "......k.....", "...k.kgk....", "..kgkkgk.k..", "..kgkgkgkgk.", "..kgkgkgkgk.", "..kgggggggk.", ".k.kgggggk..",
+            ".kgkgggggk..", "..kggggggk..", "...kggggk...", "....kkkk....",
+        ],
+        "gem" => [
+            "............", "............", "...kkkkkk...", "..kSsSsSsk..", ".kSsssssssk.", ".ksssssssk..", "..kssssssk..", "...kssssk...",
+            "....kssk....", ".....kk.....", "............", "............",
+        ],
         "crown" => [
             "............", "............", "..y..y..y...", "..yy.yy.yy..", "..yyyyyyyy..", "..yeyyeyyy..", "..yyyyyyyy..", "..YYYYYYYY..",
             "............", "............", "............", "............",

@@ -27,7 +27,7 @@ pub const VIEW_W: u32 = 480;
 pub const VIEW_H: u32 = 360;
 /// OURS: the camera stands this far behind the centre of the party's tile, so the walls beside the party are in
 /// view (the usual trick of tile-based crawlers, R14).
-pub const BACK: f32 = 0.38;
+pub const BACK: f32 = 0.42 * TILE_W;
 /// OURS: eye height above the floor of the party's tile.
 pub const EYE: f32 = 0.62;
 /// Light, in Bevy's physical units (lumens, cd/m²) at its default camera exposure. OURS: the party's lantern is
@@ -45,6 +45,8 @@ pub enum Overlay {
     Pause,
     Map,
     Help,
+    /// Choosing what goes into a member's slot.
+    Picker,
 }
 
 pub struct LogLine {
@@ -79,6 +81,8 @@ pub struct Game {
     pub slash_hit: bool,
     /// Resting: waiting until healed, stopped by danger.
     pub resting: bool,
+    /// The slot the picker is filling.
+    pub picker: Option<(usize, lac_sim::content::Slot)>,
     pub member_flash: [f32; 4],
     pub end_timer: Option<f32>,
     pub debug: bool,
@@ -102,6 +106,7 @@ impl Game {
             slash: 0.0,
             slash_hit: false,
             resting: false,
+            picker: None,
             member_flash: [0.0; 4],
             end_timer: None,
             debug: false,
@@ -207,7 +212,132 @@ pub struct MonsterView {
 pub struct Bolt {
     pub from: Vec3,
     pub to: Vec3,
+    pub fire: bool,
 }
+
+// ------------------------------------------------------------------ particles (OURS)
+
+/// Colours of glowing voxel particles.
+#[derive(Clone, Copy, PartialEq, Eq)]
+pub enum Glow {
+    Fire,
+    Ember,
+    Frost,
+    White,
+    Green,
+    Violet,
+    Gold,
+    Blood,
+}
+
+/// (colour, sRGB, glow strength; 0 is a plain lit cube)
+const GLOWS: [(Glow, [f32; 3], f32); 8] = [
+    (Glow::Fire, [1.0, 0.45, 0.12], 6.0),
+    (Glow::Ember, [1.0, 0.85, 0.35], 6.0),
+    (Glow::Frost, [0.55, 0.9, 1.0], 5.0),
+    (Glow::White, [1.0, 1.0, 1.0], 5.0),
+    (Glow::Green, [0.4, 1.0, 0.45], 4.0),
+    (Glow::Violet, [0.75, 0.45, 1.0], 4.0),
+    (Glow::Gold, [1.0, 0.85, 0.3], 5.0),
+    (Glow::Blood, [0.55, 0.12, 0.10], 0.0),
+];
+
+#[derive(Resource)]
+pub struct ParticleAssets {
+    pub cube: Handle<Mesh>,
+    pub mats: Vec<Handle<StandardMaterial>>,
+}
+
+#[derive(Component)]
+pub struct Particle {
+    pub vel: Vec3,
+    pub life: f32,
+    pub max: f32,
+    pub size: f32,
+    pub gravity: f32,
+}
+
+/// Burst lights fade with their particles.
+#[derive(Component)]
+pub struct BurstLight {
+    pub life: f32,
+    pub max: f32,
+    pub power: f32,
+}
+
+pub fn setup_particles(mut commands: Commands, mut meshes: ResMut<Assets<Mesh>>, mut mats: ResMut<Assets<StandardMaterial>>) {
+    let cube = meshes.add(Cuboid::new(1.0, 1.0, 1.0));
+    let mats = GLOWS
+        .iter()
+        .map(|(_, c, e)| {
+            let col = Color::srgb(c[0], c[1], c[2]);
+            mats.add(StandardMaterial { base_color: col, emissive: LinearRgba::from(col) * (*e * 200.0), unlit: *e > 0.0, ..default() })
+        })
+        .collect();
+    commands.insert_resource(ParticleAssets { cube, mats });
+}
+
+/// A small app-side noise for particle scatter (not the sim's: effects needn't replay).
+fn jitter(seed: &mut u32) -> f32 {
+    *seed ^= *seed << 13;
+    *seed ^= *seed >> 17;
+    *seed ^= *seed << 5;
+    (*seed as f32 / u32::MAX as f32) * 2.0 - 1.0
+}
+
+/// A cloud of glowing voxel cubes flying out from `at`, with a fading light if `light`.
+pub fn burst(commands: &mut Commands, pa: &ParticleAssets, at: Vec3, glows: &[Glow], n: usize, speed: f32, light: bool) {
+    let mut seed = ((at.x * 977.0 + at.z * 131.0 + at.y * 57.0).abs() as u32).wrapping_mul(2_654_435_761) | 1;
+    for k in 0..n {
+        let g = glows[k % glows.len()];
+        let mi = GLOWS.iter().position(|(gg, _, _)| *gg == g).unwrap_or(0);
+        let dir = Vec3::new(jitter(&mut seed), jitter(&mut seed) * 0.8 + 0.3, jitter(&mut seed)).normalize_or_zero();
+        let life = 0.45 + 0.4 * jitter(&mut seed).abs();
+        let size = 0.035 + 0.03 * jitter(&mut seed).abs();
+        let vel = dir * speed * (0.4 + 0.6 * jitter(&mut seed).abs());
+        commands.spawn((
+            Mesh3d(pa.cube.clone()),
+            MeshMaterial3d(pa.mats[mi].clone()),
+            Transform::from_translation(at).with_scale(Vec3::splat(size)),
+            Particle { vel, life, max: life, size, gravity: if g == Glow::Blood { 4.0 } else { 0.6 } },
+            WorldEntity,
+        ));
+    }
+    if light {
+        let c = GLOWS.iter().find(|(gg, _, _)| *gg == glows[0]).map(|(_, c, _)| *c).unwrap_or([1.0; 3]);
+        commands.spawn((
+            PointLight { color: Color::srgb(c[0], c[1], c[2]), intensity: 0.0, range: 5.0, ..default() },
+            Transform::from_translation(at),
+            BurstLight { life: 0.6, max: 0.6, power: 120_000.0 },
+            WorldEntity,
+        ));
+    }
+}
+
+pub fn particles(mut commands: Commands, time: Res<Time>, mut q: Query<(Entity, &mut Particle, &mut Transform)>, mut lights: Query<(Entity, &mut BurstLight, &mut PointLight)>) {
+    let dt = time.delta_secs();
+    for (e, mut p, mut tr) in &mut q {
+        p.life -= dt;
+        if p.life <= 0.0 {
+            commands.entity(e).despawn();
+            continue;
+        }
+        p.vel.y -= p.gravity * dt;
+        let v = p.vel;
+        p.vel *= 1.0 - 1.8 * dt;
+        tr.translation += v * dt;
+        tr.scale = Vec3::splat(p.size * (p.life / p.max).sqrt());
+    }
+    for (e, mut b, mut l) in &mut lights {
+        b.life -= dt;
+        if b.life <= 0.0 {
+            commands.entity(e).despawn();
+            continue;
+        }
+        l.intensity = b.power * (b.life / b.max);
+    }
+}
+
 
 #[derive(Resource, Default)]
 pub struct ChunkMap(pub BTreeMap<SIVec3, Entity>);
@@ -234,9 +364,9 @@ impl DoorView {
             return tr;
         }
         // the hinge sits at the door's left edge; the panel turns about it
-        let hinge = Vec3::new(-0.47, 0.0, 0.0);
+        let hinge = Vec3::new(-0.47 * TILE_W, 0.0, 0.0);
         let turn = Quat::from_rotation_y(frac * std::f32::consts::FRAC_PI_2);
-        let centre = hinge + turn * Vec3::new(0.47, 0.0, 0.0);
+        let centre = hinge + turn * Vec3::new(0.47 * TILE_W, 0.0, 0.0);
         tr.translation = self.closed.translation + self.closed.rotation * centre;
         tr.rotation = self.closed.rotation * turn;
         tr
@@ -259,9 +389,20 @@ pub fn animate_doors(time: Res<Time>, mut doors: ResMut<DoorAngles>, mut q: Quer
 #[derive(Resource, Clone)]
 pub struct ViewImage(pub Handle<Image>);
 
+/// OURS: a tile is drawn this much wider than it is tall, so corridors and rooms feel roomy (the sim's grid is
+/// unchanged).
+pub const TILE_W: f32 = 1.5;
+/// Scale from the sim's cells to the world.
+pub const CELL: Vec3 = Vec3::new(TILE_W, 1.0, TILE_W);
+
 /// The world position of the floor centre of a tile.
 pub fn tile_pos(p: SIVec3) -> Vec3 {
-    Vec3::new(p.x as f32 + 0.5, p.y as f32, p.z as f32 + 0.5)
+    Vec3::new((p.x as f32 + 0.5) * TILE_W, p.y as f32, (p.z as f32 + 0.5) * TILE_W)
+}
+
+/// A horizontal offset in tiles, in the world.
+fn across(d: Dir, k: f32) -> Vec3 {
+    Vec3::new(d.delta().x as f32, 0.0, d.delta().z as f32) * k * TILE_W
 }
 
 pub fn yaw(d: Dir) -> f32 {
@@ -328,7 +469,7 @@ pub fn spawn_world(
         Camera3d::default(),
         Camera { order: -1, clear_color: ClearColorConfig::Custom(fog), ..default() },
         RenderTarget::Image(view.into()),
-        Projection::Perspective(PerspectiveProjection { fov: 74f32.to_radians(), near: 0.05, ..default() }),
+        Projection::Perspective(PerspectiveProjection { fov: 80f32.to_radians(), near: 0.05, ..default() }),
         Transform::from_translation(eye + Quat::from_rotation_y(yaw(s.facing)) * Vec3::new(0.0, 0.0, BACK)).with_rotation(Quat::from_rotation_y(yaw(s.facing))),
         Msaa::Off,
         // OURS: the brightness option shifts the exposure; 1.0 is Bevy's default (EV100 9.7)
@@ -497,6 +638,13 @@ pub fn input(
                 game.dirty.hud = true;
             }
         }
+        Overlay::Picker => {
+            if pressed(C::Menu) || pressed(C::Inventory) {
+                game.overlay = Overlay::None;
+                game.picker = None;
+                game.dirty.hud = true;
+            }
+        }
         Overlay::Help => {
             if pressed(C::Help) || pressed(C::Menu) {
                 game.overlay = Overlay::None;
@@ -587,6 +735,7 @@ pub fn playback(
     time: Res<Time>,
     mut next: ResMut<NextState<Screen>>,
     mut summary: ResMut<crate::menu::EndSummary>,
+    particles: Res<ParticleAssets>,
 ) {
     let vol = settings.file.volume;
     if anim.active {
@@ -704,6 +853,8 @@ pub fn playback(
                 for (_, mut mv) in monsters.iter_mut() {
                     if mv.id == *id {
                         mv.flash = 1.0;
+                        // OURS: a puff of dark debris where the blow lands
+                        burst(&mut commands, &particles, mv.to + Vec3::Y * 0.55, &[Glow::Blood], 10, 1.3, false);
                     }
                 }
             }
@@ -754,15 +905,27 @@ pub fn playback(
             }
             Event::CharacterHealed { .. } => {}
             Event::CharacterDied { .. } => audio::play(&mut commands, &sounds, Sfx::Death, vol),
-            Event::Spell { .. } => {
+            Event::Spell { spell, .. } => {
                 base = base.max(0.25);
                 audio::play(&mut commands, &sounds, Sfx::Spell, vol);
+                use lac_sim::party::Spell as Sp;
+                let s = &game.sim.state;
+                let at = tile_pos(s.pos) + across(s.facing, 0.35) + Vec3::Y * (EYE - 0.15);
+                let glows: &[Glow] = match spell {
+                    Sp::Spark => &[Glow::White, Glow::Frost],
+                    Sp::Fireball => &[Glow::Fire, Glow::Ember],
+                    Sp::Quicken => &[Glow::Violet, Glow::White],
+                    Sp::Mend | Sp::Raise => &[Glow::Green, Glow::White],
+                    Sp::Purify => &[Glow::White, Glow::Frost],
+                    Sp::Rebuke => &[Glow::Gold, Glow::White],
+                };
+                burst(&mut commands, &particles, at, glows, 28, 1.6, true);
             }
             Event::Bolt { from, to, fire } => {
                 let a = tile_pos(*from) + Vec3::Y * EYE * 0.9;
                 let b = tile_pos(*to) + Vec3::Y * EYE * 0.9;
                 commands.spawn((
-                    Bolt { from: a, to: b },
+                    Bolt { from: a, to: b, fire: *fire },
                     Transform::from_translation(a),
                     Visibility::default(),
                     PointLight { color: if *fire { Color::srgb(1.0, 0.5, 0.2) } else { Color::srgb(0.5, 0.7, 1.0) }, intensity: TORCH_LIGHT, range: 4.0, ..default() },
@@ -865,6 +1028,7 @@ pub fn animate(
     mut monsters: Query<(Entity, &mut MonsterView, &mut Transform), (Without<PartyCam>, Without<Bolt>)>,
     mut bolts: Query<(Entity, &Bolt, &mut Transform), (Without<PartyCam>, Without<MonsterView>)>,
     mut game: ResMut<Game>,
+    pa: Res<ParticleAssets>,
 ) {
     let dt = time.delta_secs();
     game.frame_ms = game.frame_ms * 0.9 + dt * 1000.0 * 0.1;
@@ -932,7 +1096,11 @@ pub fn animate(
     }
     for (e, b, mut tr) in bolts.iter_mut() {
         tr.translation = b.from.lerp(b.to, t);
+        let trail: &[Glow] = if b.fire { &[Glow::Fire, Glow::Ember] } else { &[Glow::White, Glow::Frost] };
+        // a trail of sparks behind the bolt, then a burst where it lands
+        burst(&mut commands, &pa, tr.translation, trail, 3, 0.4, false);
         if t >= 1.0 {
+            burst(&mut commands, &pa, b.to, trail, 30, 2.2, true);
             commands.entity(e).despawn();
         }
     }
@@ -974,7 +1142,7 @@ pub fn rebuild_chunks(
             commands.entity(e).despawn();
         }
         if let Some(mesh) = voxel::chunk_mesh(world, k) {
-            let e = commands.spawn((Mesh3d(meshes.add(mesh)), MeshMaterial3d(va.material.clone()), Transform::IDENTITY, ChunkView)).id();
+            let e = commands.spawn((Mesh3d(meshes.add(mesh)), MeshMaterial3d(va.material.clone()), Transform::from_scale(CELL), ChunkView)).id();
             map.0.insert(k, e);
         }
     }
@@ -1014,7 +1182,7 @@ pub fn rebuild_features(
                 Transform::from_translation(base).with_rotation(Quat::from_rotation_y(yaw(*facing))),
             ),
             Feature::Lever { on, face, .. } => {
-                let wall = tile_pos(*p) + Vec3::new(face.delta().x as f32, 0.0, face.delta().z as f32) * 0.5 + Vec3::Y * 0.3;
+                let wall = tile_pos(*p) + across(*face, 0.5) + Vec3::Y * 0.3;
                 (
                     format!("lever{on}"),
                     if *on { || (models::lever_model(true), 1.0) } else { || (models::lever_model(false), 1.0) },
@@ -1022,12 +1190,12 @@ pub fn rebuild_features(
                 )
             }
             Feature::Torch { face } => {
-                let wall = tile_pos(*p) + Vec3::new(face.delta().x as f32, 0.0, face.delta().z as f32) * 0.5 + Vec3::Y * 0.45;
+                let wall = tile_pos(*p) + across(*face, 0.5) + Vec3::Y * 0.45;
                 let tr = Transform::from_translation(wall).with_rotation(Quat::from_rotation_y(yaw(*face)));
                 // the flame's light
                 commands.spawn((
                     PointLight { color: Color::srgb(1.0, 0.62, 0.3), intensity: TORCH_LIGHT, range: 7.0, ..default() },
-                    Transform::from_translation(wall + Vec3::new(face.delta().x as f32, 0.0, face.delta().z as f32) * 0.2 + Vec3::Y * 0.4),
+                    Transform::from_translation(wall + across(*face, 0.15) + Vec3::Y * 0.4),
                     TorchLight { phase: (p.x * 7 + p.z * 13) as f32 },
                     FeatureView,
                 ));
@@ -1035,7 +1203,9 @@ pub fn rebuild_features(
             }
             Feature::Door { open, portcullis, .. } => {
                 let walls_x = lvl.world.solid(*p + SIVec3::new(1, 0, 0)) && lvl.world.solid(*p + SIVec3::new(-1, 0, 0));
-                let closed = Transform::from_translation(base).with_rotation(Quat::from_rotation_y(if walls_x { 0.0 } else { std::f32::consts::FRAC_PI_2 }));
+                let closed = Transform::from_translation(base)
+                    .with_rotation(Quat::from_rotation_y(if walls_x { 0.0 } else { std::f32::consts::FRAC_PI_2 }))
+                    .with_scale(Vec3::new(TILE_W, 1.0, 1.0));
                 let key = (lvl.depth, *p);
                 let frac = *doors.0.entry(key).or_insert(if *open { 1.0 } else { 0.0 });
                 let view = DoorView { key, closed, portcullis: *portcullis, open: *open };
@@ -1047,13 +1217,17 @@ pub fn rebuild_features(
                     tr,
                 )
             }
-            Feature::Stairs { facing } => ("stairs".into(), || (models::stairs_model(), 1.0), Transform::from_translation(base + Vec3::Y * 0.002).with_rotation(Quat::from_rotation_y(yaw(*facing)))),
+            Feature::Stairs { facing } => (
+                "stairs".into(),
+                || (models::stairs_model(), 1.0),
+                Transform::from_translation(base + Vec3::Y * 0.002).with_rotation(Quat::from_rotation_y(yaw(*facing))).with_scale(CELL),
+            ),
             Feature::Plate { pressed, .. } => (
                 format!("plate{pressed}"),
                 if *pressed { || (models::plate_model(true), 1.0) } else { || (models::plate_model(false), 1.0) },
-                Transform::from_translation(base + Vec3::Y * 0.001),
+                Transform::from_translation(base + Vec3::Y * 0.001).with_scale(CELL),
             ),
-            Feature::Spikes => ("spikes".into(), || (models::spikes_model(), 1.0), Transform::from_translation(base)),
+            Feature::Spikes => ("spikes".into(), || (models::spikes_model(), 1.0), Transform::from_translation(base).with_scale(CELL)),
             Feature::Fountain { .. } => ("fountain".into(), || (models::fountain_model(), 1.0), Transform::from_translation(base)),
             Feature::Tomb => ("tomb".into(), || (models::tomb_model(), 1.0), Transform::from_translation(base).with_rotation(Quat::from_rotation_y(((p.x + p.z) % 2) as f32 * 0.3 - 0.15))),
             Feature::SecretWall => continue,

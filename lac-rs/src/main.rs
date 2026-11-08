@@ -308,7 +308,8 @@ fn main() {
         )
         .add_systems(Update, (game::brightness_keys, game::apply_exposure, game::animate_doors).chain().run_if(in_state(Screen::Playing)))
         .add_systems(Update, game::monster_bars.after(game::animate).run_if(in_state(Screen::Playing)))
-        .add_systems(Startup, game::setup_bars)
+        .add_systems(Startup, (game::setup_bars, game::setup_particles))
+        .add_systems(Update, game::particles.run_if(in_state(Screen::Playing)))
         .add_systems(Update, hud::fit_view.run_if(in_state(Screen::Playing)))
         .add_systems(OnExit(Screen::Playing), (hud::despawn_hud, stop_ambient, game::despawn_world).chain())
         .run();

@@ -29,7 +29,25 @@ const PANEL_W: f32 = 452.0;
 const SLOT: f32 = 46.0;
 const PACK_SLOT: f32 = 66.0;
 /// The slots a card shows; the rest are on the character sheet.
-const CARD_SLOTS: [Slot; 4] = [Slot::Weapon, Slot::Shield, Slot::Head, Slot::Body];
+const CARD_SLOTS: [Slot; 4] = [Slot::Weapon, Slot::Shield, Slot::Ring, Slot::Amulet];
+
+/// The faint glyph an empty card slot shows (a hand for the hands, a ring, a gem for the amulet).
+fn slot_glyph(slot: Slot) -> &'static str {
+    match slot {
+        Slot::Weapon | Slot::Shield => "hand",
+        Slot::Ring => "ring",
+        _ => "gem",
+    }
+}
+
+/// Where an item for a slot can come from, in the picker.
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub enum PickFrom {
+    Pack(usize),
+    Member(usize),
+    TakeOff,
+    Close,
+}
 
 #[derive(Component)]
 pub struct HudRoot;
@@ -61,6 +79,10 @@ pub enum Clickable {
     Pack(usize),
     /// The 3D view: use what is in front, or attack.
     View,
+    /// A portrait: that member strikes alone.
+    Portrait(usize),
+    /// A row of the slot picker.
+    Pick(PickFrom),
 }
 
 /// What the pointer is over, for the tooltip line.
@@ -145,7 +167,7 @@ pub fn update_tooltip(hover: Res<Hover>, game: Res<Game>, mut q: Query<&mut Text
             None => String::new(),
         },
         Some(Clickable::Equip(i, slot)) => match s.party[i].equip.get(&slot) {
-            Some(it) => format!("{}'s {}: {}   click: take off", s.party[i].name, slot.name(), sim.item_name(it)),
+            Some(it) => format!("{}'s {}: {}   click: change   right-click: to the pack", s.party[i].name, slot.name(), sim.item_name(it)),
             None => format!("{}'s {}: nothing", s.party[i].name, slot.name()),
         },
         Some(Clickable::Member(i)) => {
@@ -156,6 +178,8 @@ pub fn update_tooltip(hover: Res<Hover>, game: Res<Game>, mut q: Query<&mut Text
             )
         }
         Some(Clickable::View) => "click: use what is in front   right-click: attack".to_string(),
+        Some(Clickable::Portrait(i)) => format!("click: {} attacks   right-click: {} acts", s.party[i].name, s.party[i].name),
+        Some(Clickable::Pick(_)) => "click to choose".to_string(),
         None => String::new(),
     };
     if t.0 != text {
@@ -323,16 +347,22 @@ fn icon_handle(hud: &mut HudImages, images: &mut Assets<Image>, sim: &Sim, it: &
     hud.icons.entry((def.icon.clone(), liquid.0)).or_insert_with(|| images.add(icons::icon_image(&icons::icon(&def.icon, liquid), vision))).clone()
 }
 
-/// A square slot: a light edge, a dark well, the item's icon if any.
-fn slot_node(p: &mut ChildSpawnerCommands, size: f32, icon: Option<Handle<Image>>, highlight: bool, click: Clickable) {
+/// A square slot: a light edge, a dark well, the item's icon if any (or a faint glyph if empty).
+fn slot_node(p: &mut ChildSpawnerCommands, size: f32, icon: Option<Handle<Image>>, glyph: Option<Handle<Image>>, highlight: bool, click: Clickable) {
     let edge = if highlight { GOLD } else { SLOT_EDGE };
     p.spawn((Node { width: px(size), height: px(size), padding: UiRect::all(px(2)), ..default() }, BackgroundColor(edge), click)).with_children(|s| {
         s.spawn((Node { width: percent(100), height: percent(100), padding: UiRect::all(px(4)), ..default() }, BackgroundColor(SLOT_FILL))).with_children(|w| {
             if let Some(h) = icon {
                 w.spawn((ImageNode::new(h), Node { width: percent(100), height: percent(100), ..default() }));
+            } else if let Some(g) = glyph {
+                w.spawn((ImageNode { color: Color::srgba(1.0, 1.0, 1.0, 0.28), ..ImageNode::new(g) }, Node { width: percent(100), height: percent(100), ..default() }));
             }
         });
     });
+}
+
+fn glyph_handle(hud: &mut HudImages, images: &mut Assets<Image>, name: &str, vision: palette::Vision) -> Handle<Image> {
+    hud.icons.entry((format!("glyph:{name}"), 0)).or_insert_with(|| images.add(icons::icon_image(&icons::icon(name, (ix(GREY, 5), ix(GREY, 7))), vision))).clone()
 }
 
 fn bar(p: &mut ChildSpawnerCommands, frac: f32, colour: Color) {
@@ -364,7 +394,9 @@ fn party_panel(p: &mut ChildSpawnerCommands, game: &Game, hud: &mut HudImages, i
                                     slots.spawn(Node { flex_direction: FlexDirection::Row, column_gap: px(4), ..default() }).with_children(|sr| {
                                         for slot in pair {
                                             let icon = m.equip.get(slot).map(|it| icon_handle(hud, images, sim, it, vision));
-                                            slot_node(sr, SLOT, icon, false, Clickable::Equip(i, *slot));
+                                            let glyph = Some(glyph_handle(hud, images, slot_glyph(*slot), vision));
+                                            let open = game.picker == Some((i, *slot));
+                                            slot_node(sr, SLOT, icon, glyph, open, Clickable::Equip(i, *slot));
                                         }
                                     });
                                 }
@@ -373,6 +405,7 @@ fn party_panel(p: &mut ChildSpawnerCommands, game: &Game, hud: &mut HudImages, i
                             body.spawn((
                                 ImageNode { color: if m.alive() { Color::WHITE } else { Color::srgb(0.25, 0.2, 0.2) }, ..ImageNode::new(portrait) },
                                 Node { width: px(96), height: px(96), ..default() },
+                                Clickable::Portrait(i),
                             ));
                         });
                         bar(card, m.hp.max(0) as f32 / m.max_hp.max(1) as f32, Color::srgb(0.30, 0.78, 0.25));
@@ -408,11 +441,11 @@ fn party_panel(p: &mut ChildSpawnerCommands, game: &Game, hud: &mut HudImages, i
                 for col in 0..6 {
                     let k = row * 6 + col;
                     let icon = s.pack.get(k).map(|it| icon_handle(hud, images, sim, it, vision));
-                    slot_node(r, PACK_SLOT, icon, cursor_pack == Some(k), Clickable::Pack(k));
+                    slot_node(r, PACK_SLOT, icon, None, cursor_pack == Some(k), Clickable::Pack(k));
                 }
             });
         }
-        pk.spawn((Text::new("click: use or wear   right-click: drop"), font(11.0), TextColor(DIM)));
+        pk.spawn((Text::new("pack: click uses, right-click drops   slots: click to choose, right-click to pack   portrait: attack"), font(11.0), TextColor(DIM)));
     });
 }
 
@@ -431,12 +464,41 @@ pub fn on_click(mut click: On<PointerClick>, q: Query<&Clickable>, game: Option<
             game.dirty.hud = true;
         }
         Clickable::Equip(i, slot) => {
-            if primary && game.sim.state.party[i].equip.contains_key(&slot) {
+            if primary {
+                // a list of what can go here: from the pack, or from someone else (R63)
+                game.picker = Some((i, slot));
+                game.overlay = Overlay::Picker;
+            } else if game.sim.state.party[i].equip.contains_key(&slot) {
+                // right-click: back to the pack
                 game.push(Action::Unequip { member: i as u8, slot });
+            }
+            game.dirty.hud = true;
+        }
+        Clickable::Portrait(i) => {
+            if primary {
+                game.push(Action::AttackWith { member: i as u8 });
             } else {
                 game.selected = i;
                 game.dirty.hud = true;
             }
+        }
+        Clickable::Pick(from) => {
+            let Some((i, slot)) = game.picker else { return };
+            let member = i as u8;
+            match from {
+                PickFrom::Pack(k) => game.push(Action::Equip { member, index: k as u16 }),
+                PickFrom::Member(j) => {
+                    // off them into the pack (it lands at the end), then onto this member
+                    let at = game.sim.state.pack.len() as u16;
+                    game.push(Action::Unequip { member: j as u8, slot });
+                    game.push(Action::Equip { member, index: at });
+                }
+                PickFrom::TakeOff => game.push(Action::Unequip { member, slot }),
+                PickFrom::Close => {}
+            }
+            game.picker = None;
+            game.overlay = Overlay::None;
+            game.dirty.hud = true;
         }
         Clickable::View => {
             if game.overlay == Overlay::None {
@@ -610,6 +672,7 @@ pub fn update_hud(
                 Overlay::Spells => spells(p, sim),
                 Overlay::Pause => pause_menu(p, pause),
                 Overlay::Help => help(p, &settings),
+                Overlay::Picker => picker(p, &game, &mut hud, &mut images, vision),
                 Overlay::Map => {
                     p.spawn((Text::new(format!("Map of depth {}  (close: {})", s.level.depth, settings.describe(Command::Map))), font(15.0), TextColor(GOLD)));
                     p.spawn(Node { flex_grow: 1.0, justify_content: JustifyContent::Center, align_items: AlignItems::Center, ..default() }).with_children(|c| {
@@ -620,6 +683,62 @@ pub fn update_hud(
             });
         }
     }
+}
+
+/// The slot picker (R63): what can go into a member's slot, from the pack and from the others, labelled.
+fn picker(p: &mut ChildSpawnerCommands, game: &Game, hud: &mut HudImages, images: &mut Assets<Image>, vision: palette::Vision) {
+    let Some((i, slot)) = game.picker else { return };
+    let sim = &game.sim;
+    let s = &sim.state;
+    let m = &s.party[i];
+    let fits = |it: &lac_sim::item::Item| sim.content.item(&it.def).kind.slot() == Some(slot);
+    line(p, format!("{}'s {}", m.name, slot.name()), GOLD, 18.0);
+    let row = |p: &mut ChildSpawnerCommands, icon: Option<Handle<Image>>, text: String, colour: Color, from: PickFrom| {
+        p.spawn((Node { flex_direction: FlexDirection::Row, column_gap: px(8), align_items: AlignItems::Center, padding: UiRect::all(px(3)), ..default() }, BackgroundColor(Color::srgba(1.0, 1.0, 1.0, 0.04)), Clickable::Pick(from)))
+            .with_children(|r| {
+                match icon {
+                    Some(h) => {
+                        r.spawn((ImageNode::new(h), Node { width: px(28), height: px(28), ..default() }));
+                    }
+                    None => {
+                        r.spawn(Node { width: px(28), height: px(28), ..default() });
+                    }
+                }
+                r.spawn((Text::new(text), font(14.0), TextColor(colour)));
+            });
+    };
+    if let Some(it) = m.equip.get(&slot) {
+        let ic = icon_handle(hud, images, sim, it, vision);
+        row(p, Some(ic), format!("Take off {} (to the pack)", sim.item_name(it)), INK, PickFrom::TakeOff);
+    }
+    line(p, "From the pack", GOLD, 14.0);
+    let mut any = false;
+    for (k, it) in s.pack.iter().enumerate() {
+        if fits(it) {
+            any = true;
+            let ic = icon_handle(hud, images, sim, it, vision);
+            row(p, Some(ic), sim.item_name(it), INK, PickFrom::Pack(k));
+        }
+    }
+    if !any {
+        line(p, "  nothing that fits", DIM, 13.0);
+    }
+    line(p, "Worn by the others", GOLD, 14.0);
+    let mut any = false;
+    for (j, other) in s.party.iter().enumerate() {
+        if j == i {
+            continue;
+        }
+        if let Some(it) = other.equip.get(&slot) {
+            any = true;
+            let ic = icon_handle(hud, images, sim, it, vision);
+            row(p, Some(ic), format!("{} (from {})", sim.item_name(it), other.name), INK, PickFrom::Member(j));
+        }
+    }
+    if !any {
+        line(p, "  nobody else wears one", DIM, 13.0);
+    }
+    row(p, None, "Close".to_string(), DIM, PickFrom::Close);
 }
 
 fn line(p: &mut ChildSpawnerCommands, text: impl Into<String>, colour: Color, size: f32) {
