@@ -63,7 +63,8 @@ act. Queue several actions and they play back faster. Default keys:
 | F1 / H | help |
 | [ / ] | darker / brighter |
 
-All keys can be rebound in Options, and a gamepad works too.
+All keys can be rebound in Options. A gamepad works too once it is switched on there (it is off by default,
+because virtual controllers from other software sent stray presses).
 
 Other ways to start:
 
@@ -77,11 +78,20 @@ The rules' tests and replays: `cargo test -p lac-sim`. See any level from above:
 
 ## Status
 
-Playable from start to finish. All of it is our own work: the deterministic rules (`lac-rs/sim`), eight seeded
-levels in four themes, the party of four, items with curses and unidentified looks, monsters, d20 combat,
-levers, chests, doors and secret walls. The app adds a voxel renderer with palette cycling and SSAO, the HUD
-and automap, menus, saving, and sound synthesised in code. The board ([`WORK.md`](WORK.md)) lists what is done
-and what is still open.
+Playable from start to finish, and all of it is our own work:
+
+- **The rules** (`lac-rs/sim`): deterministic, with replay tests. Hybrid ticks: time passes only while an action
+  plays, and turning is free.
+- **The dungeon:** eight seeded levels in four themes, with ledges, chasms, lever bridges, secret vaults and
+  hand-built rooms.
+- **Party and items:** a party of four, items with curses and unidentified looks, resistances that heal past
+  100%, set and unique items.
+- **Monsters and combat:** monsters with health bars, and d20 combat.
+- **The look:** voxel walls carved in relief, palette cycling and SSAO, glowing particles for spells.
+- **The interface:** the party as cards with slots you click, a pack grid, a slot picker, map marks, resting,
+  options, saving, and sound synthesised in code.
+
+The board ([`WORK.md`](WORK.md)) lists what is done and what is still open.
 
 ## Legal
 
