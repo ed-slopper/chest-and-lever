@@ -128,6 +128,37 @@ fn decide(sim: &Sim, stuck: &mut u32) -> Vec<Action> {
             }
         }
     }
+    // bring the fallen back
+    if s.party.iter().any(|m| !m.alive()) {
+        if let Some(p) = s.party.iter().position(|q| q.alive() && q.class == Class::Priest && q.level >= Spell::Raise.min_level() && q.mp >= Spell::Raise.cost()) {
+            return vec![Action::Cast { member: p as u8, spell: Spell::Raise }];
+        }
+    }
+    // wear better armour and wield better weapons (it doesn't fear curses)
+    for (k, it) in s.pack.iter().enumerate() {
+        let def = c.item(&it.def);
+        let (slot, score) = match &def.kind {
+            ItemKind::Armor { slot, ac, .. } => (*slot, *ac as i32 * 10),
+            ItemKind::Weapon { damage, ranged: false, two_handed: false, .. } => (lac_sim::content::Slot::Weapon, (damage.average() * 10.0) as i32),
+            _ => continue,
+        };
+        let wearer = match slot {
+            lac_sim::content::Slot::Weapon => 0,
+            _ => (0..4).find(|&i| s.party[i].alive() && !s.party[i].equip.contains_key(&slot)).unwrap_or(0),
+        };
+        let m = &s.party[wearer];
+        if !m.alive() {
+            continue;
+        }
+        let have = m.equip.get(&slot).map(|w| match &c.item(&w.def).kind {
+            ItemKind::Armor { ac, .. } => *ac as i32 * 10 + w.enchant as i32 * 10,
+            ItemKind::Weapon { damage, .. } => (damage.average() * 10.0) as i32 + w.enchant as i32 * 10,
+            _ => 0,
+        });
+        if have.is_none_or(|h| score > h) && !m.equip.get(&slot).is_some_and(|w| w.cursed) {
+            return vec![Action::Equip { member: wearer as u8, index: k as u16 }];
+        }
+    }
     // fight whatever is next to us
     for d in Dir::ALL {
         if s.level.monster_at(s.pos + d.delta()).is_some() {
