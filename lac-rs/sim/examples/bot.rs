@@ -129,11 +129,10 @@ fn decide(sim: &Sim, stuck: &mut u32) -> Vec<Action> {
         }
     }
     // bring the fallen back
-    if s.party.iter().any(|m| !m.alive()) {
-        if let Some(p) = s.party.iter().position(|q| q.alive() && q.class == Class::Priest && q.level >= Spell::Raise.min_level() && q.mp >= Spell::Raise.cost()) {
+    if s.party.iter().any(|m| !m.alive())
+        && let Some(p) = s.party.iter().position(|q| q.alive() && q.class == Class::Priest && q.level >= Spell::Raise.min_level() && q.mp >= Spell::Raise.cost()) {
             return vec![Action::Cast { member: p as u8, spell: Spell::Raise }];
         }
-    }
     // wear better armour and wield better weapons (it doesn't fear curses)
     for (k, it) in s.pack.iter().enumerate() {
         let def = c.item(&it.def);
