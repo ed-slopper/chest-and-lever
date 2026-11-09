@@ -360,3 +360,41 @@ fn turning_takes_no_time() {
     s.tick(Action::StepForward);
     assert_eq!(s.state.tick, lac_sim::sim::action_ticks(&Action::StepForward));
 }
+
+#[test]
+fn every_generated_door_has_level_floor_both_sides() {
+    // a lintel over a door next to a step would block the jump up it
+    let c = Content::builtin();
+    for seed in 0..15u64 {
+        for depth in 1..=8u8 {
+            let l = lac_sim::levelgen::generate(&c, seed, depth, RunOptions::default());
+            for (p, f) in &l.features {
+                if !matches!(f, Feature::Door { .. }) || !l.world.solid(p.up()) {
+                    continue;
+                }
+                for d in Dir::ALL {
+                    let q = *p + d.delta();
+                    if l.open(q) || matches!(l.features.get(&q), Some(Feature::Door { .. })) {
+                        assert!(l.supported(q) || l.world.get(q).is_liquid(), "seed {seed} depth {depth}: door {p:?} opens onto a drop at {q:?}");
+                    }
+                }
+            }
+        }
+    }
+}
+
+#[test]
+fn a_member_can_hold_a_potion_and_drink_it() {
+    // R63: items held on the character, used by clicking them
+    let mut s = test_sim();
+    s.state.party[2].equip.clear();
+    s.state.party[2].hp = 2;
+    let k = s.state.pack.iter().position(|i| i.def == "potion_healing").unwrap() as u16;
+    let before = s.state.pack.len();
+    s.tick(Action::Hold { member: 2, index: k });
+    assert_eq!(s.state.pack.len(), before - 1);
+    assert_eq!(s.state.tick, 0, "taking it in hand is free");
+    s.tick(Action::UseHeld { member: 2 });
+    assert!(s.state.party[2].hp > 2, "Odile drank it");
+    assert!(!s.state.party[2].equip.contains_key(&lac_sim::content::Slot::Shield));
+}

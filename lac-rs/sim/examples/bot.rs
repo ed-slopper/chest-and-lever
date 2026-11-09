@@ -24,8 +24,9 @@ fn open(sim: &Sim, p: IVec3) -> bool {
         return false;
     }
     match l.features.get(&p) {
-        // the bot walks into closed doors and opens them; locked ones only with a key or a rogue
-        Some(Feature::Door { open, portcullis, lock }) => *open || (!portcullis && (lock.is_none() || has_key(sim) || has_rogue(sim))),
+        // the bot walks into closed doors and opens them
+        // a locked door gives way to a key, a rogue's picks, or in the end to force
+        Some(Feature::Door { open, portcullis, .. }) => *open || !portcullis,
         Some(f) => !f.blocks(),
         None => true,
     }
@@ -33,14 +34,6 @@ fn open(sim: &Sim, p: IVec3) -> bool {
 
 fn door_closed(sim: &Sim, p: IVec3) -> bool {
     matches!(sim.state.level.features.get(&p), Some(Feature::Door { open: false, .. }))
-}
-
-fn has_key(sim: &Sim) -> bool {
-    sim.state.pack.iter().any(|i| matches!(sim.content.item(&i.def).kind, ItemKind::Key { .. }))
-}
-
-fn has_rogue(sim: &Sim) -> bool {
-    sim.state.party.iter().any(|m| m.alive() && m.class == Class::Rogue)
 }
 
 fn fall(sim: &Sim, mut p: IVec3) -> Option<IVec3> {
@@ -174,6 +167,13 @@ fn decide(sim: &Sim, stuck: &mut u32) -> Vec<Action> {
     if s.level.items.contains_key(&s.pos) && s.pack.len() < lac_sim::sim::PACK_SIZE {
         return vec![Action::PickUp];
     }
+    // standing at an unflipped lever that faces us: flip it (the path search never ends where it starts)
+    for d in Dir::ALL {
+        if let Some(Feature::Lever { on: false, face, .. }) = s.level.features.get(&(s.pos + d.delta()))
+            && *face == d.opposite() && path(sim, goal_of(s)).is_none() {
+                return face_then(sim, d, Action::Use);
+            }
+    }
     // next to the great chest: open it
     for d in Dir::ALL {
         if let Some(Feature::Chest { great: true, .. }) = s.level.features.get(&(s.pos + d.delta())) {
@@ -181,10 +181,7 @@ fn decide(sim: &Sim, stuck: &mut u32) -> Vec<Action> {
         }
     }
     // the goal: stairs, or a tile next to the great chest
-    let goal = |p: IVec3| match s.level.features.get(&p) {
-        Some(Feature::Stairs { .. }) => true,
-        _ => Dir::ALL.iter().any(|d| matches!(s.level.features.get(&(p + d.delta())), Some(Feature::Chest { great: true, .. })) && p.y == (p + d.delta()).y),
-    };
+    let goal = goal_of(s);
     let route = path(sim, goal).or_else(|| {
         // the way is shut: go to a lever not yet flipped, or a closed chest
         path(sim, |p| {
@@ -230,6 +227,14 @@ fn decide(sim: &Sim, stuck: &mut u32) -> Vec<Action> {
             None => vec![Action::Jump, Action::StepForward],
         },
         Some(Move::LongJump(d)) => face_then(sim, *d, Action::LongJump),
+    }
+}
+
+/// The goal of a level: stairs, or a tile next to the great chest.
+fn goal_of(s: &lac_sim::State) -> impl Fn(IVec3) -> bool + '_ {
+    move |p: IVec3| match s.level.features.get(&p) {
+        Some(Feature::Stairs { .. }) => true,
+        _ => Dir::ALL.iter().any(|d| matches!(s.level.features.get(&(p + d.delta())), Some(Feature::Chest { great: true, .. })) && p.y == (p + d.delta()).y),
     }
 }
 
@@ -283,7 +288,7 @@ fn main() {
             }
         }
         let s = &sim.state;
-        if stuck >= 400 && std::env::var("BOT_WHY").is_ok() {
+        if s.outcome == Outcome::Playing && std::env::var("BOT_WHY").is_ok() {
             let stairs: Vec<_> = s.level.features.iter().filter(|(_, f)| matches!(f, Feature::Stairs { .. } | Feature::Chest { great: true, .. })).map(|(p, _)| *p).collect();
             let gates: Vec<_> = s.level.features.iter().filter(|(_, f)| matches!(f, Feature::Door { open: false, .. } | Feature::Lever { .. })).map(|(p, f)| format!("{p:?} {f:?}")).collect();
             println!("    stuck at {:?} depth {}; goal {stairs:?}

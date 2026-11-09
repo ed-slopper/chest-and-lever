@@ -35,7 +35,7 @@ pub fn action_ticks(a: &Action) -> u64 {
         Action::Jump => 15,
         Action::LongJump => 40,
         Action::Attack | Action::AttackWith { .. } | Action::Cast { .. } => 30,
-        Action::Drop { .. } | Action::PickUp | Action::Swap { .. } | Action::Note { .. } => 0,
+        Action::Drop { .. } | Action::PickUp | Action::Swap { .. } | Action::Note { .. } | Action::Hold { .. } => 0,
         _ => 30,
     }
 }
@@ -71,6 +71,11 @@ pub enum Action {
     PickUp,
     /// Free: swap two members (front row is 0 and 1).
     Swap { a: u8, b: u8 },
+    /// Free: a member takes a potion, scroll or wand from the pack into their second hand (R63: items held on
+    /// the character), to use with UseHeld.
+    Hold { member: u8, index: u16 },
+    /// Use what the member holds in their second hand: drink, read or zap it.
+    UseHeld { member: u8 },
     /// Free: put a mark on the automap at the party's tile (0 takes it away). R60: a minimap the player can
     /// make notes on.
     Note { mark: u8 },
@@ -392,6 +397,11 @@ impl State {
                 self.pick_up(c, ev);
                 false
             }
+            Action::Hold { member, index } => {
+                self.hold(c, member as usize, index as usize, ev);
+                false
+            }
+            Action::UseHeld { member } => self.use_held(c, member as usize, ev),
             Action::Note { mark } => {
                 let key = (self.pos.x, self.pos.z);
                 if mark == 0 {
@@ -1396,6 +1406,71 @@ impl State {
             }
             ItemKind::Gold { .. } => false,
         }
+    }
+
+    /// Is this an item a hand can hold to use (potion, scroll, wand)?
+    pub fn holdable(c: &Content, it: &Item) -> bool {
+        matches!(c.item(&it.def).kind, ItemKind::Potion { .. } | ItemKind::Scroll { .. } | ItemKind::Wand { .. })
+    }
+
+    fn hold(&mut self, c: &Content, i: usize, index: usize, ev: &mut Vec<Event>) {
+        if index >= self.pack.len() || i >= self.party.len() || !self.party[i].alive() || !State::holdable(c, &self.pack[index]) {
+            return;
+        }
+        if let Some(w) = self.party[i].weapon()
+            && matches!(c.item(&w.def).kind, ItemKind::Weapon { two_handed: true, .. }) {
+                say(ev, format!("{} needs both hands for the {}.", self.party[i].name, self.knowledge.name(c, w)));
+                return;
+            }
+        if self.party[i].equip.get(&Slot::Shield).is_some_and(|s| s.cursed) {
+            say(ev, "The hand is held by something cursed.");
+            return;
+        }
+        let it = self.pack.remove(index);
+        if let Some(old) = self.party[i].equip.remove(&Slot::Shield) {
+            self.pack.push(old);
+        }
+        say(ev, format!("{} holds the {} ready.", self.party[i].name, self.knowledge.name(c, &it)));
+        self.party[i].equip.insert(Slot::Shield, it);
+        ev.push(Event::PackChanged);
+    }
+
+    fn use_held(&mut self, c: &Content, i: usize, ev: &mut Vec<Event>) -> bool {
+        let Some(m) = self.party.get(i) else { return false };
+        if !m.alive() {
+            return false;
+        }
+        let Some(it) = m.equip.get(&Slot::Shield).cloned() else { return false };
+        if !State::holdable(c, &it) {
+            return false;
+        }
+        let def = c.item(&it.def).clone();
+        let name = m.name.clone();
+        match &def.kind {
+            ItemKind::Potion { effect } | ItemKind::Scroll { effect } => {
+                self.party[i].equip.remove(&Slot::Shield);
+                let verb = if matches!(def.kind, ItemKind::Potion { .. }) { "drinks" } else { "reads" };
+                say(ev, format!("{name} {verb} the {}.", self.knowledge.name(c, &it)));
+                self.knowledge.identified.insert(it.def.clone());
+                self.apply_effect(c, i, effect, ev);
+                say(ev, format!("It was a {}.", def.name));
+            }
+            ItemKind::Wand { effect, .. } => {
+                if it.charges <= 0 {
+                    say(ev, format!("{name} waves the wand. Nothing: it is empty."));
+                    return true;
+                }
+                if let Some(w) = self.party[i].equip.get_mut(&Slot::Shield) {
+                    w.charges -= 1;
+                }
+                say(ev, format!("{name} zaps the {}.", self.knowledge.name(c, &it)));
+                self.knowledge.identified.insert(it.def.clone());
+                self.apply_effect(c, i, effect, ev);
+            }
+            _ => return false,
+        }
+        ev.push(Event::PackChanged);
+        true
     }
 
     fn identify_some(&mut self, c: &Content, n: usize, ev: &mut Vec<Event>) {

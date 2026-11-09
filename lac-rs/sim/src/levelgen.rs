@@ -560,6 +560,13 @@ impl<'a> Gen<'a> {
             if !(walls_ns ^ walls_ew) || self.l.features.contains_key(&p) || !self.l.supported(p) {
                 continue;
             }
+            // only where the floor is level on both sides: a lintel over a door beside a step would leave no room
+            // to jump up it
+            let along = if walls_ns { IVec3::new(1, 0, 0) } else { IVec3::new(0, 0, 1) };
+            let level = [p + along, p - along].iter().all(|q| self.l.ground_below(q.x, q.z, g + 2) == Some(g));
+            if !level {
+                continue;
+            }
             if !self.r.chance(35) {
                 continue;
             }

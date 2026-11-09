@@ -20,11 +20,11 @@
         depth: (4, 8), weight: 6, undead: true, ranged: Some(6), model: "archer"),
     "ghoul": (name: "ghoul", hp: "4d8+4", ac: 13, to_hit: 5, damage: "1d10+1", speed: 13, sight: 8, xp: 30,
         depth: (5, 8), weight: 6, undead: true, on_hit: Some(Poison), model: "ghoul"),
-    "deep_knight": (name: "hollow knight", hp: "5d10", ac: 15, to_hit: 6, damage: "2d6+2", speed: 11, sight: 8, xp: 55,
+    "deep_knight": (name: "hollow knight", hp: "5d10", ac: 15, to_hit: 5, damage: "2d6+2", speed: 11, sight: 8, xp: 55,
         depth: (6, 8), weight: 4, undead: true, model: "knight"),
     "mimic": (name: "mimic", hp: "5d8", ac: 13, to_hit: 5, damage: "2d6", speed: 10, sight: 3, xp: 35,
         depth: (2, 8), weight: 0, special: true, model: "mimic"),
-    "warden": (name: "Warden of the Deep", hp: "10d10+10", ac: 16, to_hit: 7, damage: "2d8+3", speed: 12, sight: 10, xp: 300,
+    "warden": (name: "Warden of the Deep", hp: "8d10+10", ac: 16, to_hit: 6, damage: "2d6+3", speed: 12, sight: 10, xp: 300,
         depth: (8, 8), weight: 0, undead: true, special: true, model: "warden", element: Cold),
     // our own takes on common cave creatures
     "bat": (name: "cave bat", hp: "1d6", ac: 13, to_hit: 2, damage: "1d3", speed: 20, sight: 8, xp: 4,
