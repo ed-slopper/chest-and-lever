@@ -5,7 +5,8 @@
 //! `--seed <text>` start a run at once, `--record <file>` write the run's actions as a recording,
 //! `--replay <file>` play a recording back (board row F4), `--test-level` the code-built test level (R47).
 //! For testing: `--do "[StepForward, Jump]"` queue actions (RON) once the run starts, `--shot <file>@<secs>`
-//! save a screenshot after that many seconds (repeatable), `--quit-after <secs>`.
+//! save a screenshot after that many seconds (repeatable), `--quit-after <secs>`, `--spawn a,b,c` stand monsters
+//! of those kinds in a row on the test level (to look at their models).
 
 mod audio;
 mod game;
@@ -45,6 +46,8 @@ pub struct StartRun {
     pub record: Option<PathBuf>,
     pub replay: Option<Recording>,
     pub test_level: bool,
+    /// Monsters to stand in a row on the test level, for looking at their models.
+    pub spawn: Vec<String>,
     pub script: Vec<lac_sim::Action>,
 }
 
@@ -145,7 +148,20 @@ fn start_run(mut commands: Commands, mut start: ResMut<StartRun>, content: Res<C
         Sim::new(&rec.seed, rec.options, c)
     } else if start.test_level {
         start.test_level = false;
-        Sim::on_level(lac_sim::Level::test_level(), c)
+        let mut sim = Sim::on_level(lac_sim::Level::test_level(), c);
+        sim.state.level.monsters.clear();
+        // a row of monsters across the room, facing the party, asleep so they hold still
+        let kinds: Vec<String> = start.spawn.drain(..).filter(|k| sim.content.monsters.contains_key(k)).collect();
+        for (k, kind) in kinds.iter().enumerate() {
+            let at = lac_sim::IVec3::new(2 + (k as i32 % 4) * 2, 1, 8 + (k as i32 / 4) * 2);
+            let content = sim.content.clone();
+            let id = lac_sim::levelgen::spawn(&mut sim.state.level, &content, kind, at, &mut lac_sim::rng::Mt19937::new(k as u32 + 1), RunOptions::default());
+            if let Some(m) = sim.state.level.monsters.iter_mut().find(|m| m.id == id) {
+                m.facing = lac_sim::Dir::North;
+                m.sleep = 60_000;
+            }
+        }
+        sim
     } else if start.load {
         start.load = false;
         match std::fs::read_to_string(settings::save_path()).ok().and_then(|t| Sim::load(&t, c.clone()).ok()) {
@@ -226,6 +242,12 @@ fn parse_args(start: &mut StartRun, cap: &mut Capture) -> Option<Screen> {
             "--test-level" => {
                 start.test_level = true;
                 first = Some(Screen::Playing);
+            }
+            "--spawn" if i + 1 < args.len() => {
+                start.spawn = args[i + 1].split(',').map(|s| s.trim().to_string()).collect();
+                start.test_level = true;
+                first = Some(Screen::Playing);
+                i += 1;
             }
             _ => {}
         }

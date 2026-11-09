@@ -278,7 +278,7 @@ fn main() {
                 depth = sim.state.level.depth;
                 ticks_on_level = 0;
             }
-            if ticks_on_level > 4000 {
+            if ticks_on_level > 15_000 {
                 break;
             }
         }

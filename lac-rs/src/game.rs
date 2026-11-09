@@ -293,7 +293,8 @@ pub fn burst(commands: &mut Commands, pa: &ParticleAssets, at: Vec3, glows: &[Gl
         let mi = GLOWS.iter().position(|(gg, _, _)| *gg == g).unwrap_or(0);
         let dir = Vec3::new(jitter(&mut seed), jitter(&mut seed) * 0.8 + 0.3, jitter(&mut seed)).normalize_or_zero();
         let life = 0.45 + 0.4 * jitter(&mut seed).abs();
-        let size = 0.035 + 0.03 * jitter(&mut seed).abs();
+        // fine voxel dust, a few tiles wide in the low-resolution view
+        let size = 0.018 + 0.022 * jitter(&mut seed).abs();
         let vel = dir * speed * (0.4 + 0.6 * jitter(&mut seed).abs());
         commands.spawn((
             Mesh3d(pa.cube.clone()),
@@ -926,7 +927,7 @@ pub fn playback(
                     Sp::Purify => &[Glow::White, Glow::Frost],
                     Sp::Rebuke => &[Glow::Gold, Glow::White],
                 };
-                burst(&mut commands, &particles, at, glows, 28, 1.6, true);
+                burst(&mut commands, &particles, at, glows, 48, 1.6, true);
             }
             Event::Bolt { from, to, fire } => {
                 let a = tile_pos(*from) + Vec3::Y * EYE * 0.9;
@@ -1105,9 +1106,9 @@ pub fn animate(
         tr.translation = b.from.lerp(b.to, t);
         let trail: &[Glow] = if b.fire { &[Glow::Fire, Glow::Ember] } else { &[Glow::White, Glow::Frost] };
         // a light trail of sparks behind the bolt, then a burst where it lands
-        burst(&mut commands, &pa, tr.translation, trail, 1, 0.3, false);
+        burst(&mut commands, &pa, tr.translation, trail, 2, 0.3, false);
         if t >= 1.0 {
-            burst(&mut commands, &pa, b.to, trail, 30, 2.2, true);
+            burst(&mut commands, &pa, b.to, trail, 60, 2.2, true);
             commands.entity(e).despawn();
         }
     }

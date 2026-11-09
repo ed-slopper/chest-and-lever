@@ -34,7 +34,7 @@ pub fn action_ticks(a: &Action) -> u64 {
         Action::TurnLeft | Action::TurnRight => 0,
         Action::Jump => 15,
         Action::LongJump => 40,
-        Action::Attack | Action::AttackWith { .. } | Action::Cast { .. } => 36,
+        Action::Attack | Action::AttackWith { .. } | Action::Cast { .. } => 30,
         Action::Drop { .. } | Action::PickUp | Action::Swap { .. } | Action::Note { .. } => 0,
         _ => 30,
     }
