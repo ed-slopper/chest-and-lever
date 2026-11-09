@@ -44,6 +44,8 @@ fn slot_glyph(slot: Slot) -> &'static str {
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub enum PickFrom {
     Pack(usize),
+    /// A potion, scroll or wand from the pack, to hold in the second hand.
+    Hold(usize),
     Member(usize),
     TakeOff,
     Close,
@@ -155,8 +157,10 @@ pub fn update_tooltip(hover: Res<Hover>, game: Res<Game>, mut q: Query<&mut Text
     let text = match hover.0 {
         Some(Clickable::Pack(k)) => match s.pack.get(k) {
             Some(it) => {
+                let who = &s.party[target_for(&game, k)].name;
+                let drink = format!("click: {who} drinks");
                 let note = match sim.content.item(&it.def).kind {
-                    ItemKind::Potion { .. } => "click: drink",
+                    ItemKind::Potion { .. } => drink.as_str(),
                     ItemKind::Scroll { .. } => "click: read",
                     ItemKind::Wand { .. } => "click: zap ahead",
                     ItemKind::Weapon { .. } | ItemKind::Armor { .. } | ItemKind::Ring { .. } | ItemKind::Amulet { .. } => "click: wear",
@@ -167,6 +171,7 @@ pub fn update_tooltip(hover: Res<Hover>, game: Res<Game>, mut q: Query<&mut Text
             None => String::new(),
         },
         Some(Clickable::Equip(i, slot)) => match s.party[i].equip.get(&slot) {
+            Some(it) if lac_sim::State::holdable(&sim.content, it) => format!("{} holds {}   click: use it   right-click: to the pack", s.party[i].name, sim.item_name(it)),
             Some(it) => format!("{}'s {}: {}   click: change   right-click: to the pack", s.party[i].name, slot.name(), sim.item_name(it)),
             None => format!("{}'s {}: nothing", s.party[i].name, slot.name()),
         },
@@ -449,6 +454,26 @@ fn party_panel(p: &mut ChildSpawnerCommands, game: &Game, hud: &mut HudImages, i
     });
 }
 
+/// Who should drink or read pack item `k`: a known healing potion goes to whoever is most hurt, mana to the caster
+/// lowest on it, purging to the poisoned; anything else to the acting member.
+fn target_for(game: &Game, k: usize) -> usize {
+    use lac_sim::content::Effect;
+    let s = &game.sim.state;
+    let c = &game.sim.content;
+    let Some(it) = s.pack.get(k) else { return game.actor() };
+    if !s.knowledge.kind_known(c, &it.def) {
+        return game.actor();
+    }
+    let alive = || s.party.iter().enumerate().filter(|(_, m)| m.alive());
+    let pick = match &c.item(&it.def).kind {
+        ItemKind::Potion { effect: Effect::Heal(_) } => alive().filter(|(_, m)| m.hp < m.max_hp).min_by_key(|(_, m)| m.hp * 100 / m.max_hp.max(1)).map(|(i, _)| i),
+        ItemKind::Potion { effect: Effect::Mana(_) } => alive().filter(|(_, m)| m.max_mp > 0 && m.mp < m.max_mp).min_by_key(|(_, m)| m.mp * 100 / m.max_mp.max(1)).map(|(i, _)| i),
+        ItemKind::Potion { effect: Effect::Cure } => alive().find(|(_, m)| m.poison > 0).map(|(i, _)| i),
+        _ => None,
+    };
+    pick.unwrap_or_else(|| game.actor())
+}
+
 /// Clicks on the panel: use and drop items, take things off, pick who acts.
 pub fn on_click(mut click: On<PointerClick>, q: Query<&Clickable>, game: Option<ResMut<Game>>) {
     let Ok(c) = q.get(click.entity) else { return };
@@ -470,7 +495,11 @@ pub fn on_click(mut click: On<PointerClick>, q: Query<&Clickable>, game: Option<
             game.dirty.hud = true;
         }
         Clickable::Equip(i, slot) => {
-            if primary {
+            let held = game.sim.state.party[i].equip.get(&slot).is_some_and(|it| lac_sim::State::holdable(&game.sim.content, it));
+            if primary && held {
+                // a held potion, scroll or wand: use it, for this member (R63)
+                game.push(Action::UseHeld { member: i as u8 });
+            } else if primary {
                 // a list of what can go here: from the pack, or from someone else (R63)
                 game.picker = Some((i, slot));
                 game.overlay = Overlay::Picker;
@@ -493,6 +522,7 @@ pub fn on_click(mut click: On<PointerClick>, q: Query<&Clickable>, game: Option<
             let member = i as u8;
             match from {
                 PickFrom::Pack(k) => game.push(Action::Equip { member, index: k as u16 }),
+                PickFrom::Hold(k) => game.push(Action::Hold { member, index: k as u16 }),
                 PickFrom::Member(j) => {
                     // off them into the pack (it lands at the end), then onto this member
                     let at = game.sim.state.pack.len() as u16;
@@ -516,7 +546,7 @@ pub fn on_click(mut click: On<PointerClick>, q: Query<&Clickable>, game: Option<
                 return;
             }
             if primary {
-                let member = game.actor() as u8;
+                let member = target_for(&game, k) as u8;
                 game.push(Action::UseItem { member, index: k as u16 });
             } else {
                 game.push(Action::Drop { index: k as u16 });
@@ -744,6 +774,21 @@ fn picker(p: &mut ChildSpawnerCommands, game: &Game, hud: &mut HudImages, images
     }
     if !any {
         line(p, "  nothing that fits", DIM, 13.0);
+    }
+    if slot == Slot::Shield {
+        // the second hand can also hold a potion, scroll or wand, to use with a click (R63)
+        line(p, "To hold in hand (click it on the card to use it)", GOLD, 14.0);
+        let mut any = false;
+        for (k, it) in s.pack.iter().enumerate() {
+            if lac_sim::State::holdable(&sim.content, it) {
+                any = true;
+                let ic = icon_handle(hud, images, sim, it, vision);
+                row(p, Some(ic), sim.item_name(it), INK, PickFrom::Hold(k));
+            }
+        }
+        if !any {
+            line(p, "  no potions, scrolls or wands", DIM, 13.0);
+        }
     }
     line(p, "Worn by the others", GOLD, 14.0);
     let mut any = false;

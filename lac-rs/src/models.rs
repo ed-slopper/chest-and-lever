@@ -580,25 +580,28 @@ pub fn item_model(icon: &crate::icons::Icon) -> VoxModel {
     m
 }
 
+/// OURS: monsters are built for one-unit tiles; the world is drawn taller and wider, so they grow with it.
+pub const MONSTER_SCALE: f32 = 1.35;
+
 /// The model of a monster kind, and its scale.
 pub fn monster_model(model: &str) -> (VoxModel, f32) {
     match model {
-        "shambler" => (shambler(), 1.0),
-        "rat" => (rat(), 1.0),
-        "spider" => (spider(false), 1.3),
-        "beetle" => (spider(true), 1.2),
-        "ooze" => (ooze(), 1.2),
-        "wisp" => (wisp(), 1.0),
-        "archer" => (skeleton(true), 1.0),
-        "ghoul" => (ghoul(), 1.0),
-        "knight" => (knight(false), 1.05),
-        "mimic" => (chest_model(true, true), 1.0),
-        "warden" => (knight(true), 1.5),
-        "bat" => (bat(), 0.9),
-        "crow" => (crow(), 1.0),
-        "slime" => (slime(), 1.3),
-        "wolf" => (wolf(), 1.15),
-        _ => (shambler(), 1.0),
+        "shambler" => (shambler(), 1.0 * MONSTER_SCALE),
+        "rat" => (rat(), 1.0 * MONSTER_SCALE),
+        "spider" => (spider(false), 1.3 * MONSTER_SCALE),
+        "beetle" => (spider(true), 1.2 * MONSTER_SCALE),
+        "ooze" => (ooze(), 1.2 * MONSTER_SCALE),
+        "wisp" => (wisp(), 1.0 * MONSTER_SCALE),
+        "archer" => (skeleton(true), 1.0 * MONSTER_SCALE),
+        "ghoul" => (ghoul(), 1.0 * MONSTER_SCALE),
+        "knight" => (knight(false), 1.05 * MONSTER_SCALE),
+        "mimic" => (chest_model(true, true), 1.0 * MONSTER_SCALE),
+        "warden" => (knight(true), 1.5 * MONSTER_SCALE),
+        "bat" => (bat(), 0.9 * MONSTER_SCALE),
+        "crow" => (crow(), 1.0 * MONSTER_SCALE),
+        "slime" => (slime(), 1.3 * MONSTER_SCALE),
+        "wolf" => (wolf(), 1.15 * MONSTER_SCALE),
+        _ => (shambler(), 1.0 * MONSTER_SCALE),
     }
 }
 

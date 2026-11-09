@@ -29,7 +29,7 @@ pub const VIEW_H: u32 = 360;
 /// view (the usual trick of tile-based crawlers, R14).
 pub const BACK: f32 = 0.42 * TILE_W;
 /// OURS: eye height above the floor of the party's tile.
-pub const EYE: f32 = 0.62;
+pub const EYE: f32 = 0.62 * CELL_H;
 /// Light, in Bevy's physical units (lumens, cd/m²) at its default camera exposure. OURS: the party's lantern is
 /// bright near and gone by ten tiles; torches light a room; a little ambient keeps the far dark readable.
 pub const PARTY_LIGHT: f32 = 650_000.0;
@@ -361,7 +361,7 @@ impl DoorView {
     pub fn at(&self, frac: f32) -> Transform {
         let mut tr = self.closed;
         if self.portcullis {
-            tr.translation.y += 0.88 * frac;
+            tr.translation.y += 0.88 * CELL_H * frac;
             return tr;
         }
         // the hinge sits at the door's left edge; the panel turns about it
@@ -394,11 +394,13 @@ pub struct ViewImage(pub Handle<Image>);
 /// unchanged).
 pub const TILE_W: f32 = 1.5;
 /// Scale from the sim's cells to the world.
-pub const CELL: Vec3 = Vec3::new(TILE_W, 1.0, TILE_W);
+/// OURS: and 1.25 times as tall as the sim's unit, so blocks and doorways aren't squat (ed-slopper: "squished").
+pub const CELL_H: f32 = 1.25;
+pub const CELL: Vec3 = Vec3::new(TILE_W, CELL_H, TILE_W);
 
 /// The world position of the floor centre of a tile.
 pub fn tile_pos(p: SIVec3) -> Vec3 {
-    Vec3::new((p.x as f32 + 0.5) * TILE_W, p.y as f32, (p.z as f32 + 0.5) * TILE_W)
+    Vec3::new((p.x as f32 + 0.5) * TILE_W, p.y as f32 * CELL_H, (p.z as f32 + 0.5) * TILE_W)
 }
 
 /// A horizontal offset in tiles, in the world.
@@ -862,7 +864,7 @@ pub fn playback(
                     if mv.id == *id {
                         mv.flash = 1.0;
                         // OURS: a puff of dark debris where the blow lands
-                        burst(&mut commands, &particles, mv.to + Vec3::Y * 0.55, &[Glow::Blood], 10, 1.3, false);
+                        burst(&mut commands, &particles, mv.to + Vec3::Y * 0.7, &[Glow::Blood], 10, 1.3, false);
                     }
                 }
             }
@@ -1024,7 +1026,7 @@ pub fn playback(
 }
 
 fn monster_pos(p: SIVec3, flies: bool) -> Vec3 {
-    tile_pos(p) + if flies { Vec3::Y * 0.18 } else { Vec3::ZERO }
+    tile_pos(p) + if flies { Vec3::Y * 0.22 } else { Vec3::ZERO }
 }
 
 /// Advance the camera, the monsters and the bolts along this tick's animation.
@@ -1190,7 +1192,7 @@ pub fn rebuild_features(
                 Transform::from_translation(base).with_rotation(Quat::from_rotation_y(yaw(*facing))),
             ),
             Feature::Lever { on, face, .. } => {
-                let wall = tile_pos(*p) + across(*face, 0.5) + Vec3::Y * 0.3;
+                let wall = tile_pos(*p) + across(*face, 0.5) + Vec3::Y * 0.3 * CELL_H;
                 (
                     format!("lever{on}"),
                     if *on { || (models::lever_model(true), 1.0) } else { || (models::lever_model(false), 1.0) },
@@ -1198,12 +1200,12 @@ pub fn rebuild_features(
                 )
             }
             Feature::Torch { face } => {
-                let wall = tile_pos(*p) + across(*face, 0.5) + Vec3::Y * 0.45;
+                let wall = tile_pos(*p) + across(*face, 0.5) + Vec3::Y * 0.45 * CELL_H;
                 let tr = Transform::from_translation(wall).with_rotation(Quat::from_rotation_y(yaw(*face)));
                 // the flame's light
                 commands.spawn((
                     PointLight { color: Color::srgb(1.0, 0.62, 0.3), intensity: TORCH_LIGHT, range: 7.0, ..default() },
-                    Transform::from_translation(wall + across(*face, 0.15) + Vec3::Y * 0.4),
+                    Transform::from_translation(wall + across(*face, 0.15) + Vec3::Y * 0.4 * CELL_H),
                     TorchLight { phase: (p.x * 7 + p.z * 13) as f32 },
                     FeatureView,
                 ));
@@ -1213,7 +1215,7 @@ pub fn rebuild_features(
                 let walls_x = lvl.world.solid(*p + SIVec3::new(1, 0, 0)) && lvl.world.solid(*p + SIVec3::new(-1, 0, 0));
                 let closed = Transform::from_translation(base)
                     .with_rotation(Quat::from_rotation_y(if walls_x { 0.0 } else { std::f32::consts::FRAC_PI_2 }))
-                    .with_scale(Vec3::new(TILE_W, 1.0, 1.0));
+                    .with_scale(Vec3::new(TILE_W, CELL_H, 1.0));
                 let key = (lvl.depth, *p);
                 let frac = *doors.0.entry(key).or_insert(if *open { 1.0 } else { 0.0 });
                 let view = DoorView { key, closed, portcullis: *portcullis, open: *open };
@@ -1362,7 +1364,7 @@ pub fn monster_bars(
         }
         *vis = Visibility::Visible;
         let def = game.sim.content.monster(&lvl.monsters.iter().find(|m| m.id == bar.id).unwrap().kind);
-        let top = if def.special && def.model == "warden" { 1.7 } else { 1.08 };
+        let top = if def.special && def.model == "warden" { 2.3 } else { 1.45 };
         let frac = h as f32 / max as f32;
         let w = 0.5;
         let toward = (cam.translation - vt.translation).with_y(0.0).normalize_or_zero();
