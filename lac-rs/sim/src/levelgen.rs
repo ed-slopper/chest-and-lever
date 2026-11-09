@@ -560,8 +560,7 @@ impl<'a> Gen<'a> {
             if !(walls_ns ^ walls_ew) || self.l.features.contains_key(&p) || !self.l.supported(p) {
                 continue;
             }
-            // only where the floor is level on both sides: a lintel over a door beside a step would leave no room
-            // to jump up it
+            // only where the floor is level on both sides, so a door never stands at a step
             let along = if walls_ns { IVec3::new(1, 0, 0) } else { IVec3::new(0, 0, 1) };
             let level = [p + along, p - along].iter().all(|q| self.l.ground_below(q.x, q.z, g + 2) == Some(g));
             if !level {
@@ -569,12 +568,6 @@ impl<'a> Gen<'a> {
             }
             if !self.r.chance(35) {
                 continue;
-            }
-            // a lintel: the doorway is one tile high, so the door fills it
-            let above = p.up();
-            if !self.l.world.solid(above) {
-                let wall = self.theme().wall();
-                self.l.world.set(above, wall);
             }
             let roll = self.r.below(100);
             if roll < 20 {
@@ -981,7 +974,7 @@ fn caves(c: &Content, r: Mt19937, depth: u8, options: RunOptions, seed: u64) -> 
     let mut open = vec![false; w * d];
     for z in 2..d - 2 {
         for x in 2..w - 2 {
-            open[z * w + x] = g.r.chance(55);
+            open[z * w + x] = g.r.chance(62);
         }
     }
     for _ in 0..4 {
@@ -1022,7 +1015,8 @@ fn caves(c: &Content, r: Mt19937, depth: u8, options: RunOptions, seed: u64) -> 
         for x in 0..w {
             if open[z * w + x] {
                 let gy = height(x, z);
-                g.carve_column(x as i32, z as i32, gy, 4);
+                // OURS: caverns are tall and open (ed-slopper: caves should feel wide)
+                g.carve_column(x as i32, z as i32, gy, 6);
             }
         }
     }

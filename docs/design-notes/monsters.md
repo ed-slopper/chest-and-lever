@@ -38,4 +38,6 @@ Rows G8, C4. Code: `lac-rs/sim/src/monster.rs`, `sim.rs` (`monsters_act`); data
 
 - Tuned with the bot (`cargo run --release -p lac-sim --example bot -- 40`): it plans around levers and locked
   doors, wears better gear, heals, raises the fallen. With the Warden at 8d10+10 HP, +6, 2d6+3 and the hollow
-  knight at +5, it wins 6 of 40 runs on seeds 1-40 and 7 of 40 on seeds 41-80; most of the rest fall on depth 8.
+  knight at +5, it won 6 of 40 (seeds 1-40). Later (2026-11-08) monsters got clearly different speeds (shamblers, oozes
+  and slimes move about every other step, bats and wolves faster than the party), the slow ones more health
+  and harder hits, and the deep ones harder hits: the bot wins 10 of 40.

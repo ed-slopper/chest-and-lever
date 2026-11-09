@@ -22,6 +22,6 @@ Rows E3, G1, G2. Code: `lac-rs/sim/src/world.rs`, `sim.rs` (`step`, `jump`, `lon
 - Lava burns everyone standing in it for `2d6` per tick; spikes do `1d6` on entering.
 - Levitation (potions, rings, boots): no falling, no jumping, and the stairs can't be reached.
 - Boots of jumping: the jump climbs two tiles and the long jump flies three.
-- A closed door fills its doorway: the space above it is shut too, and generated doors have a stone lintel, so
-  nobody jumps over a door.
+- Doors are two tiles high and fill their doorway: the space above a closed door is shut too, so nobody jumps
+  over a door. Doors stand only where the floor is level on both sides.
 - Corridors are two tiles high: room to jump, no more.
