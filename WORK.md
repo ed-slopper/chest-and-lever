@@ -28,7 +28,7 @@ the store page (X5b) and the later rows.
 
 | ID | Task | Area | Needs | Who | Notes |
 |---|---|---|---|---|---|
-| E12 | SSAO as R65 describes it: dithered samples, a blur that respects normals and distance, then a light dither on top, in place of Bevy's default SSAO (`lac-rs/src/game.rs`, the camera); keep the options toggle | unowned | E8 | | Gap of F3b1: R65 changes E8 |
+| E12 | SSAO as R65 describes it: dithered samples, a blur that respects normals and distance, then a light dither on top, in place of Bevy's default SSAO (`lac-rs/src/game.rs`, the camera); keep the options toggle | unowned | E8 | ed-slopper/heron (2026-11-09) | Gap of F3b1: R65 changes E8 |
 
 ## P2 Gameplay systems
 
