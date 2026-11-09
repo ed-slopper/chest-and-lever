@@ -10,6 +10,8 @@ import bevy_pbr::render::{
     pbr_functions::{apply_pbr_lighting, main_pass_post_lighting_processing},
     mesh_view_bindings::globals,
 };
+@if(SCREEN_SPACE_AMBIENT_OCCLUSION)
+import bevy_pbr::render::mesh_view_bindings::screen_space_ambient_occlusion_texture;
 
 struct PaletteSettings {
     // (first index, length, steps per second, unused)
@@ -21,6 +23,11 @@ struct PaletteSettings {
 @group(constants::MATERIAL_BIND_GROUP) @binding(100) var<uniform> settings: PaletteSettings;
 @group(constants::MATERIAL_BIND_GROUP) @binding(101) var atlas: texture_2d<f32>;
 @group(constants::MATERIAL_BIND_GROUP) @binding(102) var palette: texture_2d<f32>;
+
+// OURS: raw GTAO values mapped to black and white, and the least light a corner keeps
+const AO_BLACK: f32 = 0.4;
+const AO_WHITE: f32 = 0.8;
+const AO_FLOOR: f32 = 0.25;
 
 @fragment
 fn fragment(in: VertexOutput, @builtin(front_facing) is_front: bool) -> FragmentOutput {
@@ -54,6 +61,23 @@ fn fragment(in: VertexOutput, @builtin(front_facing) is_front: bool) -> Fragment
     if glow {
         pbr_input.material.emissive = vec4<f32>(colour.rgb * settings.params.z, 1.0);
     }
+
+    // REF R65: the SSAO is sampled with dithering and blurred with respect for depth (Bevy's GTAO and its
+    // bilateral denoiser), then an artificial dither is laid on top: here, the occlusion is cut to a few
+    // levels through a 4×4 ordered (Bayer) pattern on the screen's pixels, so dark corners read as a dither.
+    // OURS: 6 levels and a 4×4 Bayer matrix (the record does not say which dither); the raw occlusion is
+    // remapped so open walls (which GTAO leaves a little below 1 at our scale) stay fully lit and only
+    // corners and crevices darken, and it is grey, so the stone keeps its colour.
+@if(SCREEN_SPACE_AMBIENT_OCCLUSION) {
+        let bayer = array<f32, 16>(0.0, 8.0, 2.0, 10.0, 12.0, 4.0, 14.0, 6.0, 3.0, 11.0, 1.0, 9.0, 15.0, 7.0, 13.0, 5.0);
+        let px = vec2<u32>(in.position.xy) % 4u;
+        let threshold = (bayer[px.y * 4u + px.x] + 0.5) / 16.0;
+        let raw = textureLoad(screen_space_ambient_occlusion_texture, vec2<i32>(in.position.xy), 0i).r;
+        let ao = smoothstep(AO_BLACK, AO_WHITE, raw);
+        let levels = 6.0;
+        let q = min(floor(ao * levels + threshold) / levels, 1.0);
+        pbr_input.diffuse_occlusion = vec3<f32>(AO_FLOOR + (1.0 - AO_FLOOR) * q);
+}
 
     var out: FragmentOutput;
     out.color = apply_pbr_lighting(pbr_input);

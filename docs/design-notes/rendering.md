@@ -5,7 +5,8 @@ Rows E4, E7, E8, E9, C8, C9. Code: `lac-rs/src/voxel.rs`, `palette.rs`, `texture
 
 ## From the record
 
-- R40: voxel graphics. R50: SSAO. R53: sky colours from an artist-made lookup texture. R54: palette cycling.
+- R40: voxel graphics. R50: SSAO. R65: the SSAO is dithered, blurred with respect for normals and distance,
+  then dithered again on top. R53: sky colours from an artist-made lookup texture. R54: palette cycling.
   R55: an LCD-style splash screen.
 
 ## Ours (F8, decided 2026-11-08: 480×270, 64 colours, 16 texels per tile)
@@ -18,6 +19,12 @@ Rows E4, E7, E8, E9, C8, C9. Code: `lac-rs/src/voxel.rs`, `palette.rs`, `texture
 - There is one palette of 64 colours, in 8 ramps of 8: grey, brown, red, green, blue, fire, violet and bone.
   Tile textures are palette indices in an R8 atlas. The material extends Bevy's standard material, so lighting,
   SSAO and fog still apply. It looks colours up on the GPU and cycles three ranges: water, lava and crystal.
+- SSAO (R50, R65): Bevy's GTAO already samples with noise (a Hilbert-curve pattern) and blurs with a
+  depth-aware filter. The palette shader adds R65's last step: it reads the raw occlusion, remaps it
+  (ours: 0.4 black, 0.8 white, a quarter of the light kept at worst, because GTAO leaves open walls at
+  0.7-0.85 at our scale) and cuts it to 6 levels through a 4×4 Bayer pattern on the low-resolution pixels,
+  so corners and mortar grooves darken in a fine dither. The occlusion is grey, so stone keeps its colour.
+  Models (monsters, doors, items) use Bevy's standard material and get plain SSAO without the dither.
 - One mesh per chunk (`lac-mesh`, kept optimised even in debug builds), with faces only between solid and open
   cells. Walls and floors are height fields over their texels (ed-slopper's reference: each brick's face stays
   flat, mortar and cracks sit back, and every brick's edge is rounded off rather than cut square). A point sits

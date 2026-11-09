@@ -498,7 +498,8 @@ pub fn spawn_world(
         WorldEntity,
     ));
     if settings.file.ssao {
-        // REF R50: screen-space ambient occlusion on the dungeon
+        // REF R50, R65: screen-space ambient occlusion on the dungeon (Bevy GTAO: noise-dithered samples and an
+        // edge-aware blur); shaders/palette.wesl remaps it and lays an ordered dither on top
         cam.insert(ScreenSpaceAmbientOcclusion::default());
     }
     cam.with_children(|c| {
