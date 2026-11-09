@@ -33,7 +33,7 @@ the store page (X5b) and the later rows.
 
 | ID | Task | Area | Needs | Who | Notes |
 |---|---|---|---|---|---|
-| G14 | Balance pass: tune monster numbers, loot and XP so a careful party can win and a careless one dies. The bot (`cargo run --release -p lac-sim --example bot -- 30`) reached depth 5 or deeper in 16 of 30 runs and won 1, dying mostly at party levels 2-4 to ghouls, hollow knights and bone archers; it never explores, retreats or identifies, and since the rooms grew it often stalls on levels 5-7 (path-finding, not deaths), so play-testing by people should decide | unowned | G11 | | Gap of G9: the numbers are first guesses; XP curve already eased to 15 × 2^(n-1), the hollow knight and the Warden made weaker |
+| G14 | Balance pass: tune monster numbers, loot and XP so a careful party can win and a careless one dies. The bot (`cargo run --release -p lac-sim --example bot -- 30`) reached depth 5 or deeper in 16 of 30 runs and won 1, dying mostly at party levels 2-4 to ghouls, hollow knights and bone archers; it never explores, retreats or identifies, and since the rooms grew it often stalls on levels 5-7 (path-finding, not deaths), so play-testing by people should decide | unowned | G11 | ed-slopper/heron (2026-11-08) | Gap of G9: the numbers are first guesses; XP curve already eased to 15 × 2^(n-1), the hollow knight and the Warden made weaker |
 
 ## P3 Content
 
