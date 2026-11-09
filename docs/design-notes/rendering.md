@@ -21,7 +21,7 @@ Rows E4, E7, E8, E9, C8, C9. Code: `lac-rs/src/voxel.rs`, `palette.rs`, `texture
 - One mesh per chunk (`lac-mesh`, kept optimised even in debug builds), with faces only between solid and open
   cells. Walls and floors are height fields over their texels (ed-slopper's reference: each brick's face stays
   flat, mortar and cracks sit back, and every brick's edge is rounded off rather than cut square). A point sits
-  at each texel's centre at that texel's own depth (0 to 2, 0.06 tile a step; floors half as deep), so brick
+  at each texel's centre at that texel's own depth (0 to 2, 0.035 tile a step; floors half as deep), so brick
   tops are flat and mortar reaches full depth; between them the surface slopes over one texel, softened into a
   bevel by a light 1-2-1 rounding. A face's rim takes the mean of its edge texels and the neighbouring face's,
   so a wall that goes on meets its neighbour without a crack; at corners the rim stays flush. Normals come from

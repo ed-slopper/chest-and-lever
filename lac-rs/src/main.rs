@@ -48,6 +48,8 @@ pub struct StartRun {
     pub test_level: bool,
     /// Start the run on this depth (for testing).
     pub depth: Option<u8>,
+    /// Stand the party here, facing this way (for testing): `x,y,z,North`.
+    pub at: Option<(lac_sim::IVec3, lac_sim::Dir)>,
     /// Monsters to stand in a row on the test level, for looking at their models.
     pub spawn: Vec<String>,
     pub script: Vec<lac_sim::Action>,
@@ -183,6 +185,12 @@ fn start_run(mut commands: Commands, mut start: ResMut<StartRun>, content: Res<C
         sim.state.level = lvl;
         sim.state.update_explored();
     }
+    if let Some((p, f)) = start.at.take() {
+        // testing: stand somewhere
+        sim.state.pos = p;
+        sim.state.facing = f;
+        sim.state.update_explored();
+    }
     let mut g = game::Game::new(sim);
     g.record = start.record.clone();
     g.replay = replay;
@@ -253,6 +261,16 @@ fn parse_args(start: &mut StartRun, cap: &mut Capture) -> Option<Screen> {
             "--test-level" => {
                 start.test_level = true;
                 first = Some(Screen::Playing);
+            }
+            "--at" if i + 1 < args.len() => {
+                let v: Vec<&str> = args[i + 1].split(',').collect();
+                if let [x, y, z, f] = v.as_slice() {
+                    let d = lac_sim::Dir::ALL.into_iter().find(|d| format!("{d:?}").eq_ignore_ascii_case(f));
+                    if let (Ok(x), Ok(y), Ok(z), Some(d)) = (x.parse(), y.parse(), z.parse(), d) {
+                        start.at = Some((lac_sim::IVec3::new(x, y, z), d));
+                    }
+                }
+                i += 1;
             }
             "--depth" if i + 1 < args.len() => {
                 start.depth = args[i + 1].parse().ok();

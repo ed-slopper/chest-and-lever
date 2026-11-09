@@ -657,13 +657,8 @@ pub fn arch_model() -> VoxModel {
                 (y % 5 == 4 || (x + if (y / 5) % 2 == 0 { 0 } else { 4 }) % 8 == 7, 20 + y / 5 * 3 + x / 8)
             };
             for z in 0..16 {
-                let c = if joint { ix(GREY, 1) } else { ix(GREY, 3 + (stone.rem_euclid(3)) as u8) };
+                let c = if joint { ix(GREY, 1) } else { ix(GREY, 2 + (stone.rem_euclid(2)) as u8) };
                 m.set(x, y, z, c);
-            }
-            if joint {
-                // joints sit back from the faces
-                m.clear(x, y, 0);
-                m.clear(x, y, 15);
             }
         }
     }

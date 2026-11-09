@@ -196,7 +196,7 @@ fn border(world: &World, p: IVec3, toward: IVec3, n: IVec3) -> Border {
 }
 
 /// OURS: how far one unit of texel depth pushes the surface in, in tiles.
-const SMOOTH_DEPTH: f32 = 0.06;
+const SMOOTH_DEPTH: f32 = 0.035;
 /// OURS: how much the bevels are rounded (0: straight chamfers between texel centres).
 const ROUNDING: f32 = 0.5;
 
