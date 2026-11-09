@@ -28,7 +28,6 @@ the store page (X5b) and the later rows.
 
 | ID | Task | Area | Needs | Who | Notes |
 |---|---|---|---|---|---|
-| E12 | SSAO as R65 describes it: dithered samples, a blur that respects normals and distance, then a light dither on top, in place of Bevy's default SSAO (`lac-rs/src/game.rs`, the camera); keep the options toggle | unowned | E8 | ed-slopper/heron (2026-11-09) | Gap of F3b1: R65 changes E8 |
 
 ## P2 Gameplay systems
 
@@ -108,6 +107,7 @@ the store page (X5b) and the later rows.
 | X4 | Options: a spider-free mode (R43), volume, resolution scale, colour-blind palettes | P4 | ed-slopper/heron | 2026-11-08 | 098faef |
 | G16 | Uniques at most once per run: one depth per unique from the seed, placed there once; never from drops | P2 | ed-slopper/heron | 2026-11-08 | 098faef |
 | F3b1 | Notch's posts and press up to 2026-11-09: nothing newer than R3 (2026-10-10); filled in R65 (how the SSAO is made, 80.lv May 2024), R66 ("not given up yet", 2025-11-11), R67 (AI for tools, unconfirmed); E12 added | P0 | ed-slopper/heron | 2026-11-09 | 1773d14 |
+| E12 | SSAO as R65: Bevy's GTAO (noise-dithered samples, edge-aware blur) plus, in the palette shader, the raw occlusion remapped and cut to 6 levels through a 4×4 Bayer dither; options toggle kept | P1 | ed-slopper/heron | 2026-11-09 | 7f071ef |
 | G14 | Balance: the bot plans around levers and locked doors and stalls far less; the Warden and hollow knight eased; it wins 6/40 (seeds 1-40) and 7/40 (41-80) | P2 | ed-slopper/heron | 2026-11-08 | 87d8011 |
 | G15 | Bringing back the fallen: the priest's Raise (level 5) and a scroll of raise dead | P2 | ed-slopper/heron | 2026-11-08 | 098faef |
 | F5 | Our game's name: **Chest and Lever** (window title `Chest and Lever`; crates keep the `lac` names) | P0 | ed-slopper/heron | 2026-11-08 | c2fdf8d |
@@ -125,3 +125,4 @@ the store page (X5b) and the later rows.
 - 2026-11-08 ed-slopper/heron: F1, F2, F4, F9, E1-E11, G1-G13, C1-C10, X1-X4 done (098faef); X5 split into X5a (release workflow, claimed) and X5b (store page, humans); G14 added (balance, a gap of G9); G15 (raise dead) added and done; G16 (uniques once per run) added and done; L7 (overworld, R60) added.
 - 2026-11-08 ed-slopper/heron: G14 done (87d8011).
 - 2026-11-09 ed-slopper/heron: F3a released (reddit.com refused in the built-in browser); F3b1 split from F3b and done; E12 added (SSAO as R65, a gap of F3b1).
+- 2026-11-09 ed-slopper/heron: E12 done.
