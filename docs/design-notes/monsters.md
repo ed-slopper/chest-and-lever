@@ -33,3 +33,9 @@ Rows G8, C4. Code: `lac-rs/sim/src/monster.rs`, `sim.rs` (`monsters_act`); data
 
 - Cave bat (fast flier, weak), carrion crow (small flier, flees early), bog slime (slow, poisons), dire wolf
   (fast, hits hard). Common creature kinds, in our own voxel designs; nothing traced from the record's models.
+
+## Balance (board row G14)
+
+- Tuned with the bot (`cargo run --release -p lac-sim --example bot -- 40`): it plans around levers and locked
+  doors, wears better gear, heals, raises the fallen. With the Warden at 8d10+10 HP, +6, 2d6+3 and the hollow
+  knight at +5, it wins 6 of 40 runs on seeds 1-40 and 7 of 40 on seeds 41-80; most of the rest fall on depth 8.

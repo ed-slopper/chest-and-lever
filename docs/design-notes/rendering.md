@@ -12,7 +12,7 @@ Rows E4, E7, E8, E9, C8, C9. Code: `lac-rs/src/voxel.rs`, `palette.rs`, `texture
 
 - The 3D view renders to a 480×360 image (960×720 as an option), shown in the HUD with nearest filtering. F8 set
   480×270; ed-slopper asked for a roomier view, so it is 4:3 and fills the window's height.
-- Tiles are drawn 1.5 times as wide as they are tall (the sim's grid is unchanged), so corridors and rooms
+- Tiles are drawn 1.5 wide and 1.25 tall (the sim's grid is unchanged); monsters are scaled up by 1.35 to match, so corridors and rooms
   feel roomy. The camera stands 0.42 of a tile behind the centre of the party's tile, with an 80° vertical
   field of view, so the walls beside the party are in view.
 - There is one palette of 64 colours, in 8 ramps of 8: grey, brown, red, green, blue, fire, violet and bone.

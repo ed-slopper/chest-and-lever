@@ -33,7 +33,6 @@ the store page (X5b) and the later rows.
 
 | ID | Task | Area | Needs | Who | Notes |
 |---|---|---|---|---|---|
-| G14 | Balance pass: tune monster numbers, loot and XP so a careful party can win and a careless one dies. The bot (`cargo run --release -p lac-sim --example bot -- 30`) reached depth 5 or deeper in 16 of 30 runs and won 1, dying mostly at party levels 2-4 to ghouls, hollow knights and bone archers; it never explores, retreats or identifies, and since the rooms grew it often stalls on levels 5-7 (path-finding, not deaths), so play-testing by people should decide | unowned | G11 | ed-slopper/heron (2026-11-08) | Gap of G9: the numbers are first guesses; XP curve already eased to 15 × 2^(n-1), the hollow knight and the Warden made weaker |
 
 ## P3 Content
 
@@ -107,6 +106,7 @@ the store page (X5b) and the later rows.
 | X3 | Save and quit in the middle of a run: one save per run, deleted on death | P4 | ed-slopper/heron | 2026-11-08 | 098faef |
 | X4 | Options: a spider-free mode (R43), volume, resolution scale, colour-blind palettes | P4 | ed-slopper/heron | 2026-11-08 | 098faef |
 | G16 | Uniques at most once per run: one depth per unique from the seed, placed there once; never from drops | P2 | ed-slopper/heron | 2026-11-08 | 098faef |
+| G14 | Balance: the bot plans around levers and locked doors and stalls far less; the Warden and hollow knight eased; it wins 6/40 (seeds 1-40) and 7/40 (41-80) | P2 | ed-slopper/heron | 2026-11-08 | 87d8011 |
 | G15 | Bringing back the fallen: the priest's Raise (level 5) and a scroll of raise dead | P2 | ed-slopper/heron | 2026-11-08 | 098faef |
 | F5 | Our game's name: **Chest and Lever** (window title `Chest and Lever`; crates keep the `lac` names) | P0 | ed-slopper/heron | 2026-11-08 | c2fdf8d |
 | F7 | Licences: our code MIT OR Apache-2.0, our assets CC BY 4.0 | P0 | ed-slopper/heron | 2026-11-08 | c2fdf8d |
@@ -121,3 +121,4 @@ the store page (X5b) and the later rows.
 - 2026-10-19 ed-slopper/wren: F0 and F3 done (1ef7013).
 - 2026-11-08 ed-slopper/heron: ed-slopper decided F5 (name Chest and Lever), F7 (MIT/Apache-2.0 + CC BY 4.0), F8 (480×270, 64 colours) and G9a (d20, whole party acts per tick); recorded in Done. F1, F9, E1, E3 claimed.
 - 2026-11-08 ed-slopper/heron: F1, F2, F4, F9, E1-E11, G1-G13, C1-C10, X1-X4 done (098faef); X5 split into X5a (release workflow, claimed) and X5b (store page, humans); G14 added (balance, a gap of G9); G15 (raise dead) added and done; G16 (uniques once per run) added and done; L7 (overworld, R60) added.
+- 2026-11-08 ed-slopper/heron: G14 done (87d8011).
