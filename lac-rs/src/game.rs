@@ -34,7 +34,7 @@ pub const EYE: f32 = 0.62;
 /// bright near and gone by ten tiles; torches light a room; a little ambient keeps the far dark readable.
 pub const PARTY_LIGHT: f32 = 650_000.0;
 pub const TORCH_LIGHT: f32 = 280_000.0;
-pub const AMBIENT: f32 = 300.0;
+pub const AMBIENT: f32 = 480.0;
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Default)]
 pub enum Overlay {
@@ -486,7 +486,7 @@ pub fn spawn_world(
     cam.with_children(|c| {
         // OURS: the party carries a warm light (R50-R53 say nothing of light sources)
         c.spawn((
-            PointLight { color: Color::srgb(1.0, 0.8, 0.55), intensity: PARTY_LIGHT, range: 12.0, ..default() },
+            PointLight { color: Color::srgb(1.0, 0.8, 0.55), intensity: PARTY_LIGHT, range: 18.0, ..default() },
             // a tile behind and a little above the eye: walls right in front don't burn white, while rooms
             // ahead stay lit (OURS)
             Transform::from_xyz(0.0, 0.25, 1.1),
