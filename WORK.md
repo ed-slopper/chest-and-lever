@@ -20,7 +20,7 @@ the store page (X5b) and the later rows.
 
 | ID | Task | Area | Needs | Who | Notes |
 |---|---|---|---|---|---|
-| F3a | Read r/leversandchests (Top of all time, and everything since 2026-01) and add what is new to `notes/reference.md` (trust 3 unless it links a post of Notch's) and `notes/media.md` | any | F3 | | Our tools can't read Reddit: needs a browser (by hand, or an agent driving one) |
+| F3a | Read r/leversandchests (Top of all time, and everything since 2026-01) and add what is new to `notes/reference.md` (trust 3 unless it links a post of Notch's) and `notes/media.md` | any | F3 | ed-slopper/heron (2026-11-09) | Our tools can't read Reddit: needs a browser (by hand, or an agent driving one) |
 | F3b | Keep up with Notch's posts after 2026-10-10 (R3 is the newest): new facts into `notes/reference.md`, new pictures into `notes/media.md`, and a new open row for each fact that changes a done row | any | F3 | | Recurring: split a dated row (`F3b1`, ...) per pass, leave F3b open |
 | F6 | The movement model: tile-based, one tile per step and 90° turns, as the record shows (R20, R21) for the game; free movement (R26) only as the later option L2. Confirm, or choose otherwise | humans | | | Agents assume tile-based until this says other |
 
