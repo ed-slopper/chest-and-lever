@@ -38,7 +38,10 @@ Rows E4, E7, E8, E9, C8, C9. Code: `lac-rs/src/voxel.rs`, `palette.rs`, `texture
   swing 90° on a hinge at one edge and portcullises slide up, animated over a third of a second.
 - Light: the party carries a warm point light, wall torches flicker with their own lights, and there is a dim
   ambient light tinted by the level's theme (grey-green crypt and caves, blue tombs, violet deep). Stone is a
-  damp grey-green, low in contrast (ed-slopper's reference: dark, mossy stone, fog fading to green-black). A wall
+  damp grey-green, low in contrast (ed-slopper's reference: dark, mossy stone, fog fading to green-black).
+  The ambient light carries most of the scene (1100), so walls beyond the party's light stay readable; the
+  party's own light is weak and near-white, and fog runs from 4 to 16 tiles. Matched by measuring: the
+  reference's middle brightness is about 41 of 255, with nine pixels in ten between 30 and 50. A wall
   torch's light sits close to the wall, so it throws a bright halo round the flame. Fog colour comes from a strip of palette colours, one per depth: our reading of R53 for an
   underground game.
 - Particles (R63): spells, bolts and their impacts throw clouds of tiny glowing voxel cubes, with a light that

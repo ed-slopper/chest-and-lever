@@ -33,9 +33,9 @@ pub const BACK: f32 = 0.42 * TILE_W;
 pub const EYE: f32 = 0.75 * CELL_H;
 /// Light, in Bevy's physical units (lumens, cd/m²) at its default camera exposure. OURS: the party's lantern is
 /// bright near and gone by ten tiles; torches light a room; a little ambient keeps the far dark readable.
-pub const PARTY_LIGHT: f32 = 260_000.0;
+pub const PARTY_LIGHT: f32 = 140_000.0;
 pub const TORCH_LIGHT: f32 = 280_000.0;
-pub const AMBIENT: f32 = 480.0;
+pub const AMBIENT: f32 = 1100.0;
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Default)]
 pub enum Overlay {
@@ -491,7 +491,7 @@ pub fn spawn_world(
         Msaa::Off,
         // OURS: the brightness option shifts the exposure; 1.0 is Bevy's default (EV100 9.7)
         bevy::camera::Exposure { ev100: bevy::camera::Exposure::EV100_BLENDER - settings.file.brightness.clamp(0.25, 8.0).log2() },
-        DistanceFog { color: fog, falloff: FogFalloff::Linear { start: 2.0, end: 10.0 }, ..default() },
+        DistanceFog { color: fog, falloff: FogFalloff::Linear { start: 4.0, end: 16.0 }, ..default() },
         // OURS: a soft bloom, so flames and spells glow into the dark around them
         bevy::post_process::bloom::Bloom { intensity: 0.12, ..bevy::post_process::bloom::Bloom::NATURAL },
         PartyCam,
@@ -504,7 +504,7 @@ pub fn spawn_world(
     cam.with_children(|c| {
         // OURS: the party carries a warm light (R50-R53 say nothing of light sources)
         c.spawn((
-            PointLight { color: Color::srgb(1.0, 0.8, 0.55), intensity: PARTY_LIGHT, range: 18.0, ..default() },
+            PointLight { color: Color::srgb(0.92, 0.9, 0.8), intensity: PARTY_LIGHT, range: 14.0, ..default() },
             // a tile behind and a little above the eye: walls right in front don't burn white, while rooms
             // ahead stay lit (OURS)
             Transform::from_xyz(0.0, 0.25, 1.1),
@@ -1187,8 +1187,8 @@ pub fn rebuild_chunks(
         cam.1.color = fog;
         // OURS: each theme's ambient light has its own tint
         ambient.color = match game.sim.state.level.theme {
-            lac_sim::Theme::Crypt => Color::srgb(0.62, 0.74, 0.64),
-            lac_sim::Theme::Caves => Color::srgb(0.58, 0.74, 0.56),
+            lac_sim::Theme::Crypt => Color::srgb(0.6, 0.74, 0.68),
+            lac_sim::Theme::Caves => Color::srgb(0.58, 0.74, 0.62),
             lac_sim::Theme::Tombs => Color::srgb(0.62, 0.62, 0.86),
             lac_sim::Theme::Deep => Color::srgb(0.76, 0.52, 0.8),
         };

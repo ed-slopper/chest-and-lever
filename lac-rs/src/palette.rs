@@ -122,10 +122,12 @@ pub fn palette_image(vision: Vision) -> Image {
 
 /// REF R53: the fog colour of each depth, from an artist strip rather than computed. OURS: the colours, as
 /// palette indices, depth 1 at the left.
-pub const FOG_STRIP: [u8; 9] = [ix(GREY, 1), ix(BROWN, 0), ix(BROWN, 1), ix(GREEN, 0), ix(GREEN, 1), ix(BONE, 0), ix(GREY, 1), ix(VIOLET, 0), ix(FIRE, 0)];
+/// Green-black in the crypt and caves (ed-slopper's reference), blue-black in the tombs, violet in the deep.
+pub const FOG_STRIP: [u8; 9] = [ix(GREY, 1), ix(GREY, 1), ix(GREEN, 0), ix(GREEN, 0), ix(BLUE, 0), ix(BLUE, 0), ix(VIOLET, 0), ix(VIOLET, 0), ix(FIRE, 0)];
 
 pub fn fog(vision: Vision, depth: u8) -> Color {
-    let i = FOG_STRIP[(depth as usize).min(FOG_STRIP.len() - 1)];
+    // depth 1 is the strip's first entry
+    let i = FOG_STRIP[(depth.max(1) as usize - 1).min(FOG_STRIP.len() - 1)];
     let c = colours(vision)[i as usize];
     // fog sits a little darker than the darkest shades, so far walls melt into it
     Color::srgb(c[0] * 0.7, c[1] * 0.7, c[2] * 0.7)
