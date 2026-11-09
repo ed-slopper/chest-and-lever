@@ -89,6 +89,54 @@ impl VoxModel {
         self
     }
 
+    /// The smoothed outward normal at a voxel corner (from the filled voxels within two of it) and how many of the
+    /// eight voxels touching the corner are filled.
+    fn corner_shape(&self, c: IVec3) -> (Vec3, u32) {
+        let mut g = Vec3::ZERO;
+        let mut occ = 0;
+        for dz in -2..2 {
+            for dy in -2..2 {
+                for dx in -2..2 {
+                    let v = c + IVec3::new(dx, dy, dz);
+                    if self.get(v.x, v.y, v.z) == 0 {
+                        continue;
+                    }
+                    let d = Vec3::new(dx as f32 + 0.5, dy as f32 + 0.5, dz as f32 + 0.5);
+                    g += d / d.length_squared();
+                    if (-1..1).contains(&dx) && (-1..1).contains(&dy) && (-1..1).contains(&dz) {
+                        occ += 1;
+                    }
+                }
+            }
+        }
+        (-g.normalize_or_zero(), occ)
+    }
+
+    /// Fill a ball (an ellipsoid with radii r) centred at c.
+    pub fn ball(&mut self, c: Vec3, r: Vec3, col: u8) -> &mut Self {
+        for y in (c.y - r.y).floor() as i32..=(c.y + r.y).ceil() as i32 {
+            for z in (c.z - r.z).floor() as i32..=(c.z + r.z).ceil() as i32 {
+                for x in (c.x - r.x).floor() as i32..=(c.x + r.x).ceil() as i32 {
+                    let d = (Vec3::new(x as f32 + 0.5, y as f32 + 0.5, z as f32 + 0.5) - c) / r;
+                    if d.length_squared() <= 1.0 {
+                        self.set(x, y, z, col);
+                    }
+                }
+            }
+        }
+        self
+    }
+
+    /// A thick line from a to b, `r` voxels in radius.
+    pub fn limb(&mut self, a: Vec3, b: Vec3, r: f32, col: u8) -> &mut Self {
+        let steps = ((b - a).length() * 2.0).ceil().max(1.0) as i32;
+        for i in 0..=steps {
+            let p = a.lerp(b, i as f32 / steps as f32);
+            self.ball(p, Vec3::splat(r), col);
+        }
+        self
+    }
+
     /// The mesh, centred on x and z, standing on y = 0, `scale` tiles per voxel times VOX.
     pub fn mesh(&self, vision: Vision, scale: f32) -> Mesh {
         let cols = palette::colours(vision);
@@ -121,12 +169,26 @@ impl VoxModel {
                             continue;
                         }
                         let b = pos.len() as u32;
-                        let sh = if lit { 1.0 } else { *shade };
-                        let lin = Color::srgb(c[0] * sh, c[1] * sh, c[2] * sh).to_linear();
+                        // OURS: soft shading (ed-slopper's reference): each corner's normal leans toward the
+                        // rounded shape around it and hollows darken, so the blocky models read as smooth forms
+                        let sh = if lit { 1.0 } else { 0.5 + 0.5 * *shade };
                         for k in corners {
+                            let corner = IVec3::new(x, y, z) + k.as_ivec3();
+                            let (smooth, occ) = self.corner_shape(corner);
+                            let fnorm = n.as_vec3();
+                            let mut nn = (fnorm * 0.35 + smooth * 0.65).normalize_or(fnorm);
+                            if nn.dot(fnorm) < 0.2 {
+                                nn = fnorm;
+                            }
+                            let ao = if lit { 1.0 } else { (1.0 - 0.09 * (occ as f32 - 4.0)).clamp(0.62, 1.08) };
+                            let mut lin = Color::srgb(c[0] * sh * ao, c[1] * sh * ao, c[2] * sh * ao).to_linear();
+                            if lit {
+                                // eyes and flames glow: brighter than white, so they shine and the bloom catches them
+                                lin = LinearRgba::rgb(lin.red * 6.0, lin.green * 6.0, lin.blue * 6.0);
+                            }
                             let p = (Vec3::new(x as f32, y as f32, z as f32) + *k - off) * s;
                             pos.push(p.to_array());
-                            nrm.push(n.as_vec3().to_array());
+                            nrm.push(nn.to_array());
                             col.push([lin.red, lin.green, lin.blue, 1.0]);
                         }
                         idx.extend_from_slice(&[b, b + 1, b + 2, b, b + 2, b + 3]);
@@ -213,6 +275,58 @@ fn spider(beetle: bool) -> VoxModel {
     for x in [6, 7, 8, 9] {
         m.set(x, 4, 2, eye);
     }
+    m.lit = vec![eye];
+    m.speckle(3);
+    m
+}
+
+/// OURS: the cave spider, a giant of our own design: a heavy, bristled abdomen with a pale chevron, a low head
+/// with a cluster of red eyes, and long jointed legs whose knees rise above the body. REF R42: a giant spider.
+fn giant_spider() -> VoxModel {
+    let mut m = VoxModel::new(30, 17, 30);
+    let body = ix(BROWN, 1);
+    let dark = ix(GREY, 0);
+    let leg = ix(BROWN, 1);
+    let joint = ix(GREY, 2);
+    // abdomen, cephalothorax, head
+    m.ball(Vec3::new(15.0, 8.0, 20.5), Vec3::new(6.5, 5.5, 7.5), body);
+    m.ball(Vec3::new(15.0, 6.5, 10.5), Vec3::new(4.6, 3.6, 4.4), dark);
+    m.ball(Vec3::new(15.0, 6.0, 6.0), Vec3::new(3.2, 2.8, 2.4), dark);
+    // a pale chevron down the abdomen's back
+    for k in 0..4 {
+        let z = 16 + k * 3;
+        for dx in 0..=(3 - k) {
+            for x in [15 - dx, 14 + dx] {
+                let top = (0..17).rev().find(|&y| m.get(x, y, z - dx) != 0);
+                if let Some(y) = top {
+                    m.set(x, y, z - dx, ix(BONE, 2));
+                }
+            }
+        }
+    }
+    // fangs
+    m.fill(12, 14, 2, 5, 3, 5, ix(BONE, 3));
+    m.fill(16, 18, 2, 5, 3, 5, ix(BONE, 3));
+    m.fill(12, 13, 1, 3, 3, 4, ix(BONE, 5));
+    m.fill(17, 18, 1, 3, 3, 4, ix(BONE, 5));
+    // legs: four each side, hip to a high knee to the floor
+    for (k, (hz, kz, fz)) in [(8.0, 4.0, 0.5), (10.0, 9.0, 7.0), (12.0, 15.0, 17.0), (13.0, 21.0, 28.0)].iter().enumerate() {
+        for side in [-1.0f32, 1.0] {
+            let hip = Vec3::new(15.0 + side * 3.5, 7.0, *hz);
+            let knee = Vec3::new(15.0 + side * (9.5 + k as f32 * 0.4), 15.5 - (k % 2) as f32, *kz);
+            let foot = Vec3::new(15.0 + side * 13.8, 0.6, *fz);
+            m.limb(hip, knee, 1.1, leg);
+            m.limb(knee, foot, 0.8, leg);
+            m.ball(knee, Vec3::splat(1.3), joint);
+        }
+    }
+    // eyes: a cluster on the head's front
+    let eye = ix(RED, 6);
+    for (x, y) in [(13, 7), (14, 8), (15, 8), (16, 7), (14, 6), (15, 6)] {
+        m.set(x, y, 3, eye);
+    }
+    m.set(12, 6, 4, eye);
+    m.set(17, 6, 4, eye);
     m.lit = vec![eye];
     m.speckle(3);
     m
@@ -481,26 +595,79 @@ pub fn lever_model(on: bool) -> VoxModel {
     m
 }
 
-pub fn door_model(portcullis: bool) -> VoxModel {
-    // spans the cell in x, thin in z
-    let mut m = VoxModel::new(16, 16, 2);
+pub fn door_model(portcullis: bool, tall: bool) -> VoxModel {
+    // spans the cell in x, thin in z; a tall door is two cells high with a rounded top, to fit its arch
+    let h = if tall { 32 } else { 16 };
+    let mut m = VoxModel::new(16, h, 2);
     if portcullis {
         for x in (1..16).step_by(3) {
-            m.fill(x, x + 1, 0, 16, 0, 2, ix(GREY, 3));
+            m.fill(x, x + 1, 0, h, 0, 2, ix(GREY, 3));
         }
-        for y in (2..16).step_by(4) {
+        for y in (2..h).step_by(4) {
             m.fill(0, 16, y, y + 1, 0, 2, ix(GREY, 2));
         }
     } else {
         for x in 0..16 {
             let plank = x / 4;
-            m.fill(x, x + 1, 0, 16, 0, 2, ix(BROWN, 2 + (plank % 2) as u8));
+            m.fill(x, x + 1, 0, h, 0, 2, ix(BROWN, 2 + (plank % 2) as u8));
         }
-        m.fill(0, 16, 3, 4, 0, 2, ix(GREY, 3));
-        m.fill(0, 16, 12, 13, 0, 2, ix(GREY, 3));
-        m.fill(12, 13, 7, 9, 0, 2, ix(FIRE, 5)); // handle
+        for y in if tall { [4, 15, 25].as_slice() } else { [3, 12].as_slice() } {
+            m.fill(0, 16, *y, *y + 1, 0, 2, ix(GREY, 3));
+        }
+        m.fill(12, 13, 9, 11, 0, 2, ix(FIRE, 5)); // handle
+    }
+    if tall {
+        arch_cut(&mut m, 2);
     }
     m.speckle(11);
+    m
+}
+
+/// Clear what lies outside the round top of a two-cell opening (the upper cell's semicircle).
+fn arch_cut(m: &mut VoxModel, depth: i32) {
+    for y in 16..32 {
+        for x in 0..16 {
+            let (dx, dy) = (x as f32 + 0.5 - 8.0, y as f32 + 0.5 - 16.0);
+            if dx * dx + dy * dy > 64.0 {
+                for z in 0..depth {
+                    m.clear(x, y, z);
+                }
+            }
+        }
+    }
+}
+
+/// OURS: the stone arch over a two-high doorway: it fills the upper cell but for a round vault, its stones laid
+/// as wedges around the curve, with deep joints (ed-slopper's reference: arched openings in the walls).
+pub fn arch_model() -> VoxModel {
+    let mut m = VoxModel::new(16, 16, 16);
+    for y in 0..16 {
+        for x in 0..16 {
+            let (dx, dy) = (x as f32 + 0.5 - 8.0, y as f32 + 0.5);
+            let r = (dx * dx + dy * dy).sqrt();
+            if r <= 8.0 {
+                continue;
+            }
+            // wedge stones round the curve, plain courses beyond
+            let ang = dy.atan2(dx);
+            let (joint, stone) = if r < 11.5 {
+                let k = ang / std::f32::consts::PI * 9.0;
+                ((k.fract() < 0.12) || (r > 11.0), k as i32)
+            } else {
+                (y % 5 == 4 || (x + if (y / 5) % 2 == 0 { 0 } else { 4 }) % 8 == 7, 20 + y / 5 * 3 + x / 8)
+            };
+            for z in 0..16 {
+                let c = if joint { ix(GREY, 1) } else { ix(GREY, 3 + (stone.rem_euclid(3)) as u8) };
+                m.set(x, y, z, c);
+            }
+            if joint {
+                // joints sit back from the faces
+                m.clear(x, y, 0);
+                m.clear(x, y, 15);
+            }
+        }
+    }
+    m.speckle(17);
     m
 }
 
@@ -556,13 +723,18 @@ pub fn tomb_model() -> VoxModel {
 }
 
 pub fn torch_model() -> VoxModel {
-    // against a wall at +z
-    let mut m = VoxModel::new(4, 9, 4);
-    m.fill(1, 3, 0, 5, 1, 3, ix(BROWN, 2));
-    m.fill(1, 3, 3, 4, 2, 4, ix(GREY, 2));
-    m.fill(1, 3, 5, 8, 1, 3, ix(FIRE, 6));
-    m.fill(1, 2, 8, 9, 1, 2, ix(FIRE, 7));
-    m.lit = vec![ix(FIRE, 6), ix(FIRE, 7)];
+    // against a wall at +z: an iron bracket holding a wooden brand, burning at the top
+    let mut m = VoxModel::new(5, 13, 6);
+    m.fill(1, 4, 0, 8, 1, 4, ix(BROWN, 2)); // the brand
+    m.fill(2, 3, 0, 8, 1, 2, ix(BROWN, 3));
+    m.fill(0, 5, 3, 5, 0, 5, ix(GREY, 1)); // the bracket's ring
+    m.fill(1, 4, 3, 5, 1, 4, ix(BROWN, 2));
+    m.fill(2, 3, 2, 5, 4, 6, ix(GREY, 1)); // its arm to the wall
+    m.fill(1, 4, 8, 9, 1, 4, ix(FIRE, 1)); // embers
+    m.fill(1, 4, 9, 11, 1, 4, ix(FIRE, 5));
+    m.fill(2, 3, 9, 12, 2, 3, ix(FIRE, 7));
+    m.fill(2, 3, 12, 13, 2, 3, ix(FIRE, 6));
+    m.lit = vec![ix(FIRE, 1), ix(FIRE, 5), ix(FIRE, 6), ix(FIRE, 7)];
     m
 }
 
@@ -588,7 +760,7 @@ pub fn monster_model(model: &str) -> (VoxModel, f32) {
     match model {
         "shambler" => (shambler(), 1.0 * MONSTER_SCALE),
         "rat" => (rat(), 1.0 * MONSTER_SCALE),
-        "spider" => (spider(false), 1.3 * MONSTER_SCALE),
+        "spider" => (giant_spider(), 0.85 * MONSTER_SCALE),
         "beetle" => (spider(true), 1.2 * MONSTER_SCALE),
         "ooze" => (ooze(), 1.2 * MONSTER_SCALE),
         "wisp" => (wisp(), 1.0 * MONSTER_SCALE),
@@ -610,7 +782,6 @@ pub fn monster_model(model: &str) -> (VoxModel, f32) {
 pub struct ModelCache {
     pub meshes: BTreeMap<String, Handle<Mesh>>,
     pub material: Handle<StandardMaterial>,
-    pub glow: Handle<StandardMaterial>,
 }
 
 impl ModelCache {

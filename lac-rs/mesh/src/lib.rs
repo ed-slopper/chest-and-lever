@@ -159,7 +159,12 @@ pub fn chunk_mesh(world: &World, chunk: IVec3, tex: &[Tex]) -> MeshData {
                     if world.solid(out) || !world.in_bounds(out) {
                         continue;
                     }
-                    face(&mut m, world, tex, p, fr);
+                    if fr.n.y < 0 {
+                        // ceilings: flat
+                        face(&mut m, world, tex, p, fr);
+                    } else {
+                        smooth_face(&mut m, world, tex, p, fr);
+                    }
                 }
             }
         }
@@ -187,6 +192,118 @@ fn border(world: &World, p: IVec3, toward: IVec3, n: IVec3) -> Border {
         Border::Plane
     } else {
         Border::Concave
+    }
+}
+
+/// OURS: how far one unit of texel depth pushes the surface in, in tiles.
+const SMOOTH_DEPTH: f32 = 0.06;
+/// OURS: how much the bevels are rounded (0: straight chamfers between texel centres).
+const ROUNDING: f32 = 0.5;
+
+/// A face as a height field over its texels (ed-slopper's reference: each brick's face stays flat, mortar and
+/// cracks sit back, and the edge of every brick is rounded off rather than cut square). A point sits at every
+/// texel's centre at that texel's own depth, so a brick top is flat and a mortar line reaches its full depth;
+/// between them the surface slopes over one texel, and a light rounding softens the slope into a bevel. The
+/// rim of the face takes the mean of its edge texels and the neighbouring face's, so a wall that goes on meets
+/// its neighbour without a crack; at corners the rim stays flush. Normals come from the surface, so light rolls
+/// over the bevels.
+#[allow(clippy::needless_range_loop)] // a grid indexed both ways
+fn smooth_face(m: &mut MeshData, world: &World, tex: &[Tex], p: IVec3, fr: &Frame) {
+    let side = fr.n.y == 0;
+    let tile = tile_of(world.get(p), side);
+    let t = &tex[tile as usize];
+    let (n, u, v) = (V3::of(fr.n), V3::of(fr.u), V3::of(fr.v));
+    let origin = V3::of(p) + V3(0.5, 0.5, 0.5) + n * 0.5 - u * 0.5 - v * 0.5;
+    // floors keep shallower relief, so the party walks on something flat enough
+    let scale = if fr.n.y > 0 { 0.5 } else { 1.0 };
+    let depth_of = |tt: &Tex, i: usize, j: usize| tt[j][i].depth as f32 * scale;
+    // a neighbour's texture, if the wall goes on into it (else None: the rim stays flush)
+    let next = |toward: IVec3| -> Option<&Tex> {
+        (border(world, p, toward, fr.n) == Border::Plane).then(|| &tex[tile_of(world.get(p + toward), side) as usize])
+    };
+    let (lo_u, hi_u, lo_v, hi_v) = (next(IVec3::ZERO - fr.u), next(fr.u), next(IVec3::ZERO - fr.v), next(fr.v));
+    // the points: rim, 16 texel centres, rim, along each axis (18 × 18)
+    const G: usize = TILE + 2;
+    let coord = |k: usize| -> f32 {
+        match k {
+            0 => 0.0,
+            k if k == G - 1 => T,
+            k => k as f32 - 0.5,
+        }
+    };
+    let mut field = [[0.0f32; G]; G]; // field[b][a]: a along u, b along v
+    for b in 0..G {
+        for a in 0..G {
+            let rim_u = a == 0 || a == G - 1;
+            let rim_v = b == 0 || b == G - 1;
+            field[b][a] = match (rim_u, rim_v) {
+                (false, false) => depth_of(t, a - 1, b - 1),
+                (true, true) => 0.0,
+                (true, false) => {
+                    let j = b - 1;
+                    let (own, other) = if a == 0 { (0, lo_u.map(|o| (o, TILE - 1))) } else { (TILE - 1, hi_u.map(|o| (o, 0))) };
+                    other.map_or(0.0, |(o, i)| (depth_of(t, own, j) + depth_of(o, i, j)) / 2.0)
+                }
+                (false, true) => {
+                    let i = a - 1;
+                    let (own, other) = if b == 0 { (0, lo_v.map(|o| (o, TILE - 1))) } else { (TILE - 1, hi_v.map(|o| (o, 0))) };
+                    other.map_or(0.0, |(o, j)| (depth_of(t, i, own) + depth_of(o, i, j)) / 2.0)
+                }
+            };
+        }
+    }
+    // round the bevels: blend each inner point toward a 1-2-1 blur of its neighbours (rims stay put)
+    let mut soft = field;
+    for b in 1..G - 1 {
+        for a in 1..G - 1 {
+            let mut sum = 0.0;
+            for (db, wb) in [(-1i32, 1.0), (0, 2.0), (1, 1.0)] {
+                for (da, wa) in [(-1i32, 1.0), (0, 2.0), (1, 1.0)] {
+                    sum += field[(b as i32 + db) as usize][(a as i32 + da) as usize] * wa * wb;
+                }
+            }
+            soft[b][a] = field[b][a] * (1.0 - ROUNDING) + sum / 16.0 * ROUNDING;
+        }
+    }
+    let base = m.pos.len() as u32;
+    let pt = |a: usize, b: usize| origin + u * (coord(a) / T) + v * (coord(b) / T) - n * (soft[b][a] * SMOOTH_DEPTH);
+    for b in 0..G {
+        for a in 0..G {
+            let du = pt((a + 1).min(G - 1), b) - pt(a.saturating_sub(1), b);
+            let dv = pt(a, (b + 1).min(G - 1)) - pt(a, b.saturating_sub(1));
+            let mut nn = du.cross(dv);
+            if nn.dot(n) < 0.0 {
+                nn = nn * -1.0;
+            }
+            let len = nn.dot(nn).sqrt().max(1e-6);
+            let nn = nn * (1.0 / len);
+            let q = pt(a, b);
+            m.pos.push([q.0, q.1, q.2]);
+            m.nrm.push([nn.0, nn.1, nn.2]);
+            m.uv.push([coord(a) / T, coord(b) / T]);
+            // a little darker in the hollows
+            m.col.push([tile as f32, fr.shade * (1.0 - 0.1 * soft[b][a] / scale.max(0.5)), 0.0, 1.0]);
+        }
+    }
+    for b in 0..G - 1 {
+        for a in 0..G - 1 {
+            let i0 = base + (b * G + a) as u32;
+            let (i1, i2, i3) = (i0 + 1, i0 + 1 + G as u32, i0 + G as u32);
+            let p0 = V3::from(m.pos[i0 as usize]);
+            let p1 = V3::from(m.pos[i1 as usize]);
+            let p2 = V3::from(m.pos[i2 as usize]);
+            if (p1 - p0).cross(p2 - p0).dot(n) > 0.0 {
+                m.idx.extend_from_slice(&[i0, i1, i2, i0, i2, i3]);
+            } else {
+                m.idx.extend_from_slice(&[i0, i2, i1, i0, i3, i2]);
+            }
+        }
+    }
+}
+
+impl From<[f32; 3]> for V3 {
+    fn from(a: [f32; 3]) -> V3 {
+        V3(a[0], a[1], a[2])
     }
 }
 

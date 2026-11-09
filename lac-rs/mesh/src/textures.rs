@@ -3,7 +3,7 @@
 //! and cracks are carved into the wall as voxels rather than painted on (the relief mesher in `lib.rs`).
 //! All ours (F8: 16 texels per tile edge, our own look).
 
-use crate::pal::{ix, BLUE, BONE, BROWN, FIRE, GREEN, GREY, RED, VIOLET};
+use crate::pal::{ix, BLUE, BONE, BROWN, FIRE, GREEN, GREY, VIOLET};
 use lac_sim::Cell;
 
 pub const TILE: usize = 16;
@@ -99,14 +99,15 @@ fn brick(salt: u32) -> Tex {
         let off = if row % 2 == 0 { 0 } else { 4 };
         let mortar = y % 4 == 3 || (x + off) % 8 == 7;
         if mortar {
-            return (ix(GREY, 2 + noise(x, y, salt, 2) as u8), 2);
+            return (ix(GREY, 1 + noise(x, y, salt, 2) as u8), 2);
         }
+        // OURS: damp grey-green stone (ed-slopper's reference), each block a shade of its own
         let b = noise((x + off) / 8, row, salt, 3) as u8;
         let n = noise(x, y, salt + 1, 8);
         let s = 2 + b + if n == 0 { 1 } else { 0 };
-        // worn bricks: a few sit back a step
+        // worn blocks: a few sit back a step
         let worn = noise((x + off) / 8, row, salt + 4, 5) == 0;
-        (ix(RED, s), worn as u8)
+        (ix(GREY, s), worn as u8)
     })
 }
 
@@ -255,7 +256,8 @@ pub fn texture(cell: Cell, side: bool) -> Tex {
         Cell::Dirt => dirt(s),
         Cell::Rock => {
             if side {
-                rough(s, BROWN, 1)
+                // OURS: cave rock is grey, worn into soft lumps
+                rough(s, GREY, 2)
             } else {
                 dirt(s)
             }

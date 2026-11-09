@@ -29,10 +29,11 @@ pub const VIEW_H: u32 = 360;
 /// view (the usual trick of tile-based crawlers, R14).
 pub const BACK: f32 = 0.42 * TILE_W;
 /// OURS: eye height above the floor of the party's tile.
-pub const EYE: f32 = 0.62 * CELL_H;
+/// OURS: the party stands tall (ed-slopper): three quarters of a tile.
+pub const EYE: f32 = 0.75 * CELL_H;
 /// Light, in Bevy's physical units (lumens, cd/m²) at its default camera exposure. OURS: the party's lantern is
 /// bright near and gone by ten tiles; torches light a room; a little ambient keeps the far dark readable.
-pub const PARTY_LIGHT: f32 = 650_000.0;
+pub const PARTY_LIGHT: f32 = 260_000.0;
 pub const TORCH_LIGHT: f32 = 280_000.0;
 pub const AMBIENT: f32 = 480.0;
 
@@ -213,6 +214,7 @@ pub struct Bolt {
     pub from: Vec3,
     pub to: Vec3,
     pub fire: bool,
+    pub arrow: bool,
 }
 
 // ------------------------------------------------------------------ particles (OURS)
@@ -228,10 +230,12 @@ pub enum Glow {
     Violet,
     Gold,
     Blood,
+    /// Plain grey dust: an arrow's flight and its splinters.
+    Dust,
 }
 
 /// (colour, sRGB, glow strength; 0 is a plain lit cube)
-const GLOWS: [(Glow, [f32; 3], f32); 8] = [
+const GLOWS: [(Glow, [f32; 3], f32); 9] = [
     (Glow::Fire, [1.0, 0.45, 0.12], 6.0),
     (Glow::Ember, [1.0, 0.85, 0.35], 6.0),
     (Glow::Frost, [0.55, 0.9, 1.0], 5.0),
@@ -240,6 +244,7 @@ const GLOWS: [(Glow, [f32; 3], f32); 8] = [
     (Glow::Violet, [0.75, 0.45, 1.0], 4.0),
     (Glow::Gold, [1.0, 0.85, 0.3], 5.0),
     (Glow::Blood, [0.55, 0.12, 0.10], 0.0),
+    (Glow::Dust, [0.62, 0.56, 0.48], 0.0),
 ];
 
 #[derive(Resource)]
@@ -300,7 +305,7 @@ pub fn burst(commands: &mut Commands, pa: &ParticleAssets, at: Vec3, glows: &[Gl
             Mesh3d(pa.cube.clone()),
             MeshMaterial3d(pa.mats[mi].clone()),
             Transform::from_translation(at).with_scale(Vec3::splat(size)),
-            Particle { vel, life, max: life, size, gravity: if g == Glow::Blood { 4.0 } else { 0.6 } },
+            Particle { vel, life, max: life, size, gravity: if matches!(g, Glow::Blood | Glow::Dust) { 4.0 } else { 0.6 } },
             WorldEntity,
         ));
     }
@@ -315,8 +320,16 @@ pub fn burst(commands: &mut Commands, pa: &ParticleAssets, at: Vec3, glows: &[Gl
     }
 }
 
-pub fn particles(mut commands: Commands, time: Res<Time>, mut q: Query<(Entity, &mut Particle, &mut Transform)>, mut lights: Query<(Entity, &mut BurstLight, &mut PointLight)>) {
-    let dt = time.delta_secs();
+/// REF R27, R64: time stands still between actions, and so do particles: they hang in the air until the next
+/// action plays (ed-slopper).
+pub fn particles(
+    mut commands: Commands,
+    time: Res<Time>,
+    anim: Res<Anim>,
+    mut q: Query<(Entity, &mut Particle, &mut Transform)>,
+    mut lights: Query<(Entity, &mut BurstLight, &mut PointLight)>,
+) {
+    let dt = if anim.active { time.delta_secs() } else { 0.0 };
     for (e, mut p, mut tr) in &mut q {
         p.life -= dt;
         if p.life <= 0.0 {
@@ -354,6 +367,8 @@ pub struct DoorView {
     pub closed: Transform,
     pub portcullis: bool,
     pub open: bool,
+    /// Tiles high: two where the doorway is open above, one under a lintel.
+    pub high: f32,
 }
 
 impl DoorView {
@@ -361,7 +376,7 @@ impl DoorView {
     pub fn at(&self, frac: f32) -> Transform {
         let mut tr = self.closed;
         if self.portcullis {
-            tr.translation.y += 0.88 * CELL_H * frac;
+            tr.translation.y += 0.92 * CELL_H * self.high * frac;
             return tr;
         }
         // the hinge sits at the door's left edge; the panel turns about it
@@ -456,7 +471,6 @@ pub fn spawn_world(
     commands.insert_resource(va);
     let mut cache = ModelCache {
         material: smat.add(StandardMaterial { base_color: Color::WHITE, perceptual_roughness: 0.9, reflectance: 0.05, ..default() }),
-        glow: smat.add(StandardMaterial { base_color: Color::WHITE, unlit: true, ..default() }),
         ..default()
     };
     cache.meshes.clear();
@@ -477,7 +491,9 @@ pub fn spawn_world(
         Msaa::Off,
         // OURS: the brightness option shifts the exposure; 1.0 is Bevy's default (EV100 9.7)
         bevy::camera::Exposure { ev100: bevy::camera::Exposure::EV100_BLENDER - settings.file.brightness.clamp(0.25, 8.0).log2() },
-        DistanceFog { color: fog, falloff: FogFalloff::Linear { start: 2.5, end: 11.0 }, ..default() },
+        DistanceFog { color: fog, falloff: FogFalloff::Linear { start: 2.0, end: 10.0 }, ..default() },
+        // OURS: a soft bloom, so flames and spells glow into the dark around them
+        bevy::post_process::bloom::Bloom { intensity: 0.12, ..bevy::post_process::bloom::Bloom::NATURAL },
         PartyCam,
         WorldEntity,
     ));
@@ -831,6 +847,8 @@ pub fn playback(
                         audio::play(&mut commands, &sounds, if water { Sfx::Splash } else { Sfx::Land }, vol);
                     }
                     MoveKind::Teleport => {
+                        // every teleport goes in the log, with where from and to (the message line says why)
+                        info!("teleport: {:?} -> {:?} (depth {})", from, to, game.sim.state.level.depth);
                         snap = true;
                         audio::play(&mut commands, &sounds, Sfx::Spell, vol);
                     }
@@ -931,15 +949,28 @@ pub fn playback(
                 };
                 burst(&mut commands, &particles, at, glows, 48, 1.6, true);
             }
-            Event::Bolt { from, to, fire } => {
-                let a = tile_pos(*from) + Vec3::Y * EYE * 0.9;
-                let b = tile_pos(*to) + Vec3::Y * EYE * 0.9;
-                commands.spawn((
-                    Bolt { from: a, to: b, fire: *fire },
-                    Transform::from_translation(a),
-                    Visibility::default(),
-                    PointLight { color: if *fire { Color::srgb(1.0, 0.5, 0.2) } else { Color::srgb(0.5, 0.7, 1.0) }, intensity: TORCH_LIGHT, range: 4.0, ..default() },
-                ));
+            Event::Bolt { from, to, fire, arrow } => {
+                let a = tile_pos(*from) + Vec3::Y * EYE * 0.85;
+                let b = tile_pos(*to) + Vec3::Y * EYE * 0.85;
+                if *arrow {
+                    // an arrow: a thin shaft flying along the line, no glow
+                    let dir = (b - a).normalize_or_zero();
+                    commands.spawn((
+                        Bolt { from: a, to: b, fire: false, arrow: true },
+                        Mesh3d(particles.cube.clone()),
+                        MeshMaterial3d(particles.mats[GLOWS.iter().position(|(g, _, _)| *g == Glow::Dust).unwrap_or(0)].clone()),
+                        Transform::from_translation(a).looking_to(if dir == Vec3::ZERO { Vec3::Z } else { dir }, Vec3::Y).with_scale(Vec3::new(0.025, 0.025, 0.45)),
+                        WorldEntity,
+                    ));
+                    audio::play(&mut commands, &sounds, Sfx::Miss, vol * 0.8);
+                } else {
+                    commands.spawn((
+                        Bolt { from: a, to: b, fire: *fire, arrow: false },
+                        Transform::from_translation(a),
+                        Visibility::default(),
+                        PointLight { color: if *fire { Color::srgb(1.0, 0.5, 0.2) } else { Color::srgb(0.5, 0.7, 1.0) }, intensity: TORCH_LIGHT, range: 4.0, ..default() },
+                    ));
+                }
                 base = base.max(0.25);
                 if *fire {
                     audio::play(&mut commands, &sounds, Sfx::Fire, vol);
@@ -1106,9 +1137,19 @@ pub fn animate(
     }
     for (e, b, mut tr) in bolts.iter_mut() {
         tr.translation = b.from.lerp(b.to, t);
+        if b.arrow {
+            // an arrow leaves no sparks; it splinters where it lands
+            if t >= 1.0 {
+                burst(&mut commands, &pa, b.to, &[Glow::Dust], 8, 1.0, false);
+                commands.entity(e).despawn();
+            }
+            continue;
+        }
         let trail: &[Glow] = if b.fire { &[Glow::Fire, Glow::Ember] } else { &[Glow::White, Glow::Frost] };
         // a light trail of sparks behind the bolt, then a burst where it lands
-        burst(&mut commands, &pa, tr.translation, trail, 2, 0.3, false);
+        if anim.active {
+            burst(&mut commands, &pa, tr.translation, trail, 2, 0.3, false);
+        }
         if t >= 1.0 {
             burst(&mut commands, &pa, b.to, trail, 60, 2.2, true);
             commands.entity(e).despawn();
@@ -1129,6 +1170,7 @@ pub fn rebuild_chunks(
     va: Res<VoxelAssets>,
     mut cam: Single<(&mut Camera, &mut DistanceFog), With<PartyCam>>,
     settings: Res<Settings>,
+    mut ambient: ResMut<GlobalAmbientLight>,
 ) {
     let all = std::mem::take(&mut game.dirty.all_chunks);
     let some: BTreeSet<SIVec3> = std::mem::take(&mut game.dirty.chunks);
@@ -1143,6 +1185,13 @@ pub fn rebuild_chunks(
         let fog = palette::fog(settings.file.vision, game.sim.state.level.depth);
         cam.0.clear_color = ClearColorConfig::Custom(fog);
         cam.1.color = fog;
+        // OURS: each theme's ambient light has its own tint
+        ambient.color = match game.sim.state.level.theme {
+            lac_sim::Theme::Crypt => Color::srgb(0.62, 0.74, 0.64),
+            lac_sim::Theme::Caves => Color::srgb(0.58, 0.74, 0.56),
+            lac_sim::Theme::Tombs => Color::srgb(0.62, 0.62, 0.86),
+            lac_sim::Theme::Deep => Color::srgb(0.76, 0.52, 0.8),
+        };
         world.chunk_keys().collect()
     } else {
         some.into_iter().filter(|k| world.chunk_keys().any(|c| c == *k)).collect()
@@ -1181,10 +1230,10 @@ pub fn rebuild_features(
     let c = &game.sim.content;
     let lvl = &s.level;
     let mat = cache.material.clone();
-    let glow = cache.glow.clone();
     for (p, f) in &lvl.features {
         let base = tile_pos(*p);
         let mut door_view: Option<DoorView> = None;
+        let mut arch: Option<Transform> = None;
         let (key, model, tr): (String, fn() -> (models::VoxModel, f32), Transform) = match f {
             Feature::Chest { open, facing, .. } => (
                 format!("chest{open}"),
@@ -1204,8 +1253,9 @@ pub fn rebuild_features(
                 let tr = Transform::from_translation(wall).with_rotation(Quat::from_rotation_y(yaw(*face)));
                 // the flame's light
                 commands.spawn((
-                    PointLight { color: Color::srgb(1.0, 0.62, 0.3), intensity: TORCH_LIGHT, range: 7.0, ..default() },
-                    Transform::from_translation(wall + across(*face, 0.15) + Vec3::Y * 0.4 * CELL_H),
+                    // close to the wall, so it throws a bright halo round the torch and a soft glow beyond
+                    PointLight { color: Color::srgb(1.0, 0.66, 0.36), intensity: TORCH_LIGHT, range: 6.0, ..default() },
+                    Transform::from_translation(wall + across(*face, 0.3) + Vec3::Y * 0.45 * CELL_H),
                     TorchLight { phase: (p.x * 7 + p.z * 13) as f32 },
                     FeatureView,
                 ));
@@ -1218,12 +1268,23 @@ pub fn rebuild_features(
                     .with_scale(Vec3::new(TILE_W, CELL_H, 1.0));
                 let key = (lvl.depth, *p);
                 let frac = *doors.0.entry(key).or_insert(if *open { 1.0 } else { 0.0 });
-                let view = DoorView { key, closed, portcullis: *portcullis, open: *open };
+                let tall = !lvl.world.solid(p.up());
+                let high = if tall { 2.0 } else { 1.0 };
+                let view = DoorView { key, closed, portcullis: *portcullis, open: *open, high };
                 let tr = view.at(frac);
                 door_view = Some(view);
+                if tall {
+                    // the stone arch over a two-high doorway
+                    arch = Some(Transform::from_translation(base + Vec3::Y * CELL_H).with_rotation(closed.rotation).with_scale(CELL));
+                }
                 (
-                    format!("door{portcullis}"),
-                    if *portcullis { || (models::door_model(true), 1.0) } else { || (models::door_model(false), 1.0) },
+                    format!("door{portcullis}{tall}"),
+                    match (*portcullis, tall) {
+                        (true, true) => || (models::door_model(true, true), 1.0),
+                        (true, false) => || (models::door_model(true, false), 1.0),
+                        (false, true) => || (models::door_model(false, true), 1.0),
+                        (false, false) => || (models::door_model(false, false), 1.0),
+                    },
                     tr,
                 )
             }
@@ -1243,10 +1304,13 @@ pub fn rebuild_features(
             Feature::SecretWall => continue,
         };
         let mesh = cache.get(&key, &mut meshes, vision, model);
-        let m = if key == "torch" { glow.clone() } else { mat.clone() };
-        let mut e = commands.spawn((Mesh3d(mesh), MeshMaterial3d(m), tr, FeatureView));
+        let mut e = commands.spawn((Mesh3d(mesh), MeshMaterial3d(mat.clone()), tr, FeatureView));
         if let Some(v) = door_view.take() {
             e.insert(v);
+        }
+        if let Some(at) = arch {
+            let mesh = cache.get("arch", &mut meshes, vision, || (models::arch_model(), 1.0));
+            commands.spawn((Mesh3d(mesh), MeshMaterial3d(mat.clone()), at, FeatureView));
         }
     }
     for (p, items) in &lvl.items {

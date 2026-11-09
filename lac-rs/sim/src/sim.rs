@@ -109,7 +109,8 @@ pub enum Event {
     CharacterHealed { member: u8, amount: i32 },
     CharacterDied { member: u8 },
     Spell { member: u8, spell: Spell },
-    Bolt { from: IVec3, to: IVec3, fire: bool },
+    /// Something flies down a line: a spell bolt (fire or not) or an arrow.
+    Bolt { from: IVec3, to: IVec3, fire: bool, arrow: bool },
     CellsChanged(Vec<IVec3>),
     FeatureChanged(IVec3),
     ItemsChanged(IVec3),
@@ -891,8 +892,8 @@ impl State {
                 }
             }
             Trap::Teleport => {
-                say(ev, "A glyph flares and the world lurches.");
-                self.teleport(c, ev);
+                say(ev, "A glyph flares under your feet: a teleport trap!");
+                self.teleport(c, "the teleport trap", ev);
             }
         }
     }
@@ -1086,6 +1087,11 @@ impl State {
                 }
             }
             let id = self.level.monsters[t].id;
+            if ranged {
+                // the shot itself, for the app to draw
+                let to = self.level.monsters[t].pos;
+                ev.push(Event::Bolt { from: self.pos, to, fire: false, arrow: true });
+            }
             ev.push(Event::PartyAttack { member: i as u8, target: Some(id), hit, damage, ranged });
             let name = def.name.clone();
             let who = self.party[i].name.clone();
@@ -1270,7 +1276,7 @@ impl State {
             Spell::Fireball => {
                 if let Some(t) = self.first_in_line(8) {
                     let at = self.level.monsters[t].pos;
-                    ev.push(Event::Bolt { from: self.pos, to: at, fire: true });
+                    ev.push(Event::Bolt { from: self.pos, to: at, fire: true, arrow: false });
                     say(ev, format!("{name} hurls a fireball!"));
                     let main = Dice::new(3, 6, lvl as i16).roll(&mut self.rng.combat);
                     self.damage_monster(c, t, main, ev);
@@ -1341,7 +1347,7 @@ impl State {
             && !pierce {
                 end = self.level.monsters[t].pos;
             }
-        ev.push(Event::Bolt { from: self.pos, to: end, fire });
+        ev.push(Event::Bolt { from: self.pos, to: end, fire, arrow: false });
         if targets.is_empty() {
             say(ev, "The bolt hits nothing.");
         }
@@ -1566,7 +1572,7 @@ impl State {
                 say(ev, "You feel as if someone is watching over you.");
                 ev.push(Event::PackChanged);
             }
-            Effect::Teleport => self.teleport(c, ev),
+            Effect::Teleport => self.teleport(c, "the magic", ev),
             Effect::Mapping => {
                 let s = self.level.world.size;
                 for x in 0..s.x {
@@ -1654,7 +1660,9 @@ impl State {
         }
     }
 
-    fn teleport(&mut self, c: &Content, ev: &mut Vec<Event>) {
+    /// Throw the party to a random free spot on the level. Every teleport says what caused it (ed-slopper: "I
+    /// randomly teleport" should never go unexplained).
+    fn teleport(&mut self, c: &Content, cause: &str, ev: &mut Vec<Event>) {
         let s = self.level.world.size;
         for _ in 0..500 {
             let x = self.rng.world.range(1, s.x - 2);
@@ -1665,7 +1673,11 @@ impl State {
                     let from = self.pos;
                     self.pos = p;
                     ev.push(Event::PartyMoved { from, to: p, kind: MoveKind::Teleport });
-                    say(ev, "You are somewhere else.");
+                    let (dx, dz) = (p.x - from.x, p.z - from.z);
+                    let dist = dx.abs().max(dz.abs());
+                    let ns = if dz < 0 { format!("{} north", -dz) } else { format!("{dz} south") };
+                    let we = if dx < 0 { format!("{} west", -dx) } else { format!("{dx} east") };
+                    say(ev, format!("Teleported by {cause}: {dist} tiles away ({ns}, {we})."));
                     self.entered(c, ev);
                     return;
                 }
@@ -1809,7 +1821,21 @@ impl State {
             }
         }
         if self.party_effect(c, |e| matches!(e, Effect::Teleportitis)) && self.rng.world.chance(3) {
-            self.teleport(c, ev);
+            // say whose ring it is, and make it known, so the cause is never a mystery
+            let wearer = self.party.iter().filter(|m| m.alive()).find_map(|m| {
+                m.equip.values().find(|it| matches!(&c.item(&it.def).kind, ItemKind::Ring { effect: Effect::Teleportitis } | ItemKind::Amulet { effect: Effect::Teleportitis })).map(|it| (m.name.clone(), it.clone()))
+            });
+            let cause = match wearer {
+                Some((name, it)) => {
+                    let was = self.knowledge.name(c, &it);
+                    self.knowledge.identified.insert(it.def.clone());
+                    say(ev, format!("{name}'s {was} flickers: it is a {}!", c.item(&it.def).name));
+                    ev.push(Event::PackChanged);
+                    format!("{name}'s {}", c.item(&it.def).name)
+                }
+                None => "teleportitis".to_string(),
+            };
+            self.teleport(c, &cause, ev);
         }
     }
 
@@ -1876,7 +1902,7 @@ impl State {
                 if let Some(d) = Dir::between(pos, pos + IVec3::new((self.pos.x - pos.x).signum(), 0, (self.pos.z - pos.z).signum())) {
                     self.level.monsters[idx].facing = d;
                 }
-                ev.push(Event::Bolt { from: pos, to: self.pos, fire: false });
+                ev.push(Event::Bolt { from: pos, to: self.pos, fire: false, arrow: true });
                 self.monster_attack(c, idx, true, ev);
                 return;
             }

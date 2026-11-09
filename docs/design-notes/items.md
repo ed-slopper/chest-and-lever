@@ -21,7 +21,9 @@ Rows G5, C5. Code: `lac-rs/sim/src/item.rs`, `content.rs`; data `lac-rs/assets/c
   - Boots of jumping make the long jump cross two-tile chasms that are meant to need a lever.
   - Levitation floats over lava moats.
   - A wand of digging cuts through anything but bedrock, secret walls included.
-  - Rings of teleportitis jump the party about at random.
+  - Rings of teleportitis jump the party about at random (3% a round). When one fires it names its wearer and
+    becomes known. Every teleport, from a trap, a scroll, a wand or a ring, says its cause and how far the party
+    went, and the app logs it (ed-slopper: a teleport should never go unexplained).
 
 ## After the design notes (R60)
 

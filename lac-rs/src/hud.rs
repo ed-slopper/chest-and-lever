@@ -26,17 +26,20 @@ pub const MAP: usize = 48;
 /// The small map shows this many tiles across, centred on the party.
 pub const SMALL_MAP: usize = 24;
 const PANEL_W: f32 = 452.0;
-const SLOT: f32 = 46.0;
-const PACK_SLOT: f32 = 66.0;
+const SLOT: f32 = 34.0;
+const PACK_SLOT: f32 = 58.0;
 /// The slots a card shows; the rest are on the character sheet.
-const CARD_SLOTS: [Slot; 4] = [Slot::Weapon, Slot::Shield, Slot::Ring, Slot::Amulet];
+const CARD_SLOTS: [Slot; 7] = [Slot::Weapon, Slot::Shield, Slot::Head, Slot::Body, Slot::Feet, Slot::Ring, Slot::Amulet];
 
 /// The faint glyph an empty card slot shows (a hand for the hands, a ring, a gem for the amulet).
 fn slot_glyph(slot: Slot) -> &'static str {
     match slot {
         Slot::Weapon | Slot::Shield => "hand",
+        Slot::Head => "helm",
+        Slot::Body => "armor",
+        Slot::Feet => "boots",
         Slot::Ring => "ring",
-        _ => "gem",
+        Slot::Amulet => "gem",
     }
 }
 
@@ -352,11 +355,69 @@ fn icon_handle(hud: &mut HudImages, images: &mut Assets<Image>, sim: &Sim, it: &
     hud.icons.entry((def.icon.clone(), liquid.0)).or_insert_with(|| images.add(icons::icon_image(&icons::icon(&def.icon, liquid), vision))).clone()
 }
 
-/// A square slot: a light edge, a dark well, the item's icon if any (or a faint glyph if empty).
-fn slot_node(p: &mut ChildSpawnerCommands, size: f32, icon: Option<Handle<Image>>, glyph: Option<Handle<Image>>, highlight: bool, click: Clickable) {
-    let edge = if highlight { GOLD } else { SLOT_EDGE };
-    p.spawn((Node { width: px(size), height: px(size), padding: UiRect::all(px(2)), ..default() }, BackgroundColor(edge), click)).with_children(|s| {
-        s.spawn((Node { width: percent(100), height: percent(100), padding: UiRect::all(px(4)), ..default() }, BackgroundColor(SLOT_FILL))).with_children(|w| {
+/// OURS: how rare and strong an item looks, from what the party knows of it (ed-slopper: grey, blue, purple,
+/// orange). 0 common; 1 magic (a known +1 or +2, a ring, amulet or wand, or a find from depth 4 down); 2 rare (a
+/// set piece, or a known +3 or better); 3 unique. A hidden enchantment never shows through the colour, and a
+/// known curse makes anything common.
+pub fn tier_of(sim: &Sim, it: &lac_sim::item::Item) -> u8 {
+    let def = sim.content.item(&it.def);
+    if it.known && it.cursed {
+        return 0;
+    }
+    if def.unique {
+        return 3;
+    }
+    let plus = if it.known { it.enchant } else { 0 };
+    if def.set.is_some() || plus >= 3 {
+        return 2;
+    }
+    let magic = matches!(def.kind, ItemKind::Ring { .. } | ItemKind::Amulet { .. } | ItemKind::Wand { .. });
+    if plus >= 1 || magic || def.depth.0 >= 4 {
+        return 1;
+    }
+    0
+}
+
+/// The colour of a tier.
+pub fn tier_colour(tier: u8) -> Color {
+    match tier {
+        0 => Color::srgb(0.55, 0.55, 0.58),
+        1 => Color::srgb(0.30, 0.56, 1.0),
+        2 => Color::srgb(0.70, 0.36, 0.98),
+        _ => Color::srgb(1.0, 0.56, 0.14),
+    }
+}
+
+/// A square slot: a light edge, a dark well, the item's icon if any (or a faint glyph if empty). An item's
+/// tier colours the edge, tints the well and, above common, makes a soft glow round the slot.
+fn slot_node(p: &mut ChildSpawnerCommands, size: f32, icon: Option<(Handle<Image>, u8)>, glyph: Option<Handle<Image>>, highlight: bool, click: Clickable) {
+    let tier = icon.as_ref().map(|i| i.1);
+    let icon = icon.map(|i| i.0);
+    let tc = tier.map(tier_colour);
+    let edge = if highlight {
+        GOLD
+    } else {
+        match (tier, tc) {
+            (Some(t), Some(c)) if t > 0 => c,
+            _ => SLOT_EDGE,
+        }
+    };
+    let fill = match (tier, tc) {
+        (Some(t), Some(c)) if t > 0 => {
+            let (a, b) = (SLOT_FILL.to_srgba(), c.to_srgba());
+            let k = 0.24;
+            Color::srgb(a.red + (b.red - a.red) * k, a.green + (b.green - a.green) * k, a.blue + (b.blue - a.blue) * k)
+        }
+        _ => SLOT_FILL,
+    };
+    let mut outer = p.spawn((Node { width: px(size), height: px(size), padding: UiRect::all(px(2)), ..default() }, BackgroundColor(edge), click));
+    if let (Some(t), Some(c)) = (tier, tc) {
+        if t > 0 {
+            outer.insert(bevy::ui::BoxShadow::new(c.with_alpha(0.35 + 0.15 * t as f32), Val::ZERO, Val::ZERO, px(1), px(4.0 + 2.0 * t as f32)));
+        }
+    }
+    outer.with_children(|s| {
+        s.spawn((Node { width: percent(100), height: percent(100), padding: UiRect::all(px(4)), ..default() }, BackgroundColor(fill))).with_children(|w| {
             if let Some(h) = icon {
                 w.spawn((ImageNode::new(h), Node { width: percent(100), height: percent(100), ..default() }));
             } else if let Some(g) = glyph {
@@ -398,7 +459,7 @@ fn party_panel(p: &mut ChildSpawnerCommands, game: &Game, hud: &mut HudImages, i
                                 for pair in CARD_SLOTS.chunks(2) {
                                     slots.spawn(Node { flex_direction: FlexDirection::Row, column_gap: px(4), ..default() }).with_children(|sr| {
                                         for slot in pair {
-                                            let icon = m.equip.get(slot).map(|it| icon_handle(hud, images, sim, it, vision));
+                                            let icon = m.equip.get(slot).map(|it| (icon_handle(hud, images, sim, it, vision), tier_of(sim, it)));
                                             let glyph = Some(glyph_handle(hud, images, slot_glyph(*slot), vision));
                                             let open = game.picker == Some((i, *slot));
                                             slot_node(sr, SLOT, icon, glyph, open, Clickable::Equip(i, *slot));
@@ -445,7 +506,7 @@ fn party_panel(p: &mut ChildSpawnerCommands, game: &Game, hud: &mut HudImages, i
             pk.spawn(Node { flex_direction: FlexDirection::Row, column_gap: px(4), ..default() }).with_children(|r| {
                 for col in 0..6 {
                     let k = row * 6 + col;
-                    let icon = s.pack.get(k).map(|it| icon_handle(hud, images, sim, it, vision));
+                    let icon = s.pack.get(k).map(|it| (icon_handle(hud, images, sim, it, vision), tier_of(sim, it)));
                     slot_node(r, PACK_SLOT, icon, None, cursor_pack == Some(k), Clickable::Pack(k));
                 }
             });

@@ -11,11 +11,15 @@ Rows X1, X2, X4, G12, E11. Code: `lac-rs/src/hud.rs`, `menu.rs`.
 - Left: the 3D view, the full height of the window (4:3), with the status line and the last six messages drawn
   over it.
 - Right (layout as ed-slopper asked, 2026-11-08; our own art): a stone panel with
-  - the party as a 2×2 grid of cards, front row on top: name, class and level, four equipment slots (weapon,
-    shield, head, body), the portrait, health and mana bars, HP, mana, AC and poison;
+  - the party as a 2×2 grid of cards, front row on top: name, class and level, seven equipment slots (two
+    hands, head, body, feet, ring, amulet), the portrait, health and mana bars, HP, mana, AC and poison;
   - the pack as a 6×4 grid of item icons, with gold and who is acting;
+  - every item's slot is coloured by its tier, from what the party knows of it (ours, ed-slopper's ask): grey
+    common; blue magic (a known +1 or +2, a ring, amulet or wand, or a find from depth 4 down); purple rare (a
+    set piece or a known +3 or better); orange unique. Above common the slot's edge takes the colour, its well
+    is tinted and a soft glow surrounds it. A hidden enchantment never shows; a known curse makes it common;
   - the automap, centred on the party and turned so forward is up, and the main keys.
-- Mouse (R63): a card's slots are two hands, a ring and an amulet, with faint glyphs when empty. The second hand
+- Mouse (R63): a card's slots are two hands, head, body, feet, a ring and an amulet, with faint glyphs when empty, so a worn helm shows on its member. The second hand
   can also hold a potion, scroll or wand (chosen in its list); clicking it uses it for that member. Clicking a
   known healing potion in the pack gives it to whoever is most hurt (mana to the caster lowest on it, purging
   to the poisoned). Clicking a slot

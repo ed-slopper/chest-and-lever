@@ -46,6 +46,8 @@ pub struct StartRun {
     pub record: Option<PathBuf>,
     pub replay: Option<Recording>,
     pub test_level: bool,
+    /// Start the run on this depth (for testing).
+    pub depth: Option<u8>,
     /// Monsters to stand in a row on the test level, for looking at their models.
     pub spawn: Vec<String>,
     pub script: Vec<lac_sim::Action>,
@@ -172,6 +174,15 @@ fn start_run(mut commands: Commands, mut start: ResMut<StartRun>, content: Res<C
         let seed = start.seed.take().unwrap_or_else(|| lac_sim::rng::seed_words(time.elapsed().as_nanos() as u64 ^ 0x5eed));
         Sim::new(&seed, options, c)
     };
+    let mut sim = sim;
+    if let Some(d) = start.depth.take() {
+        // testing: start deeper
+        let lvl = lac_sim::levelgen::generate(&sim.content, sim.state.seed, d, sim.state.options);
+        sim.state.pos = lvl.start;
+        sim.state.facing = lvl.start_facing;
+        sim.state.level = lvl;
+        sim.state.update_explored();
+    }
     let mut g = game::Game::new(sim);
     g.record = start.record.clone();
     g.replay = replay;
@@ -242,6 +253,10 @@ fn parse_args(start: &mut StartRun, cap: &mut Capture) -> Option<Screen> {
             "--test-level" => {
                 start.test_level = true;
                 first = Some(Screen::Playing);
+            }
+            "--depth" if i + 1 < args.len() => {
+                start.depth = args[i + 1].parse().ok();
+                i += 1;
             }
             "--spawn" if i + 1 < args.len() => {
                 start.spawn = args[i + 1].split(',').map(|s| s.trim().to_string()).collect();

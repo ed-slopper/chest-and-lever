@@ -46,7 +46,7 @@ impl Vision {
 /// Each ramp as (hue degrees, saturation, the darkest and lightest lightness).
 fn ramp_def(ramp: usize, vision: Vision) -> (f32, f32, f32, f32) {
     let base = match ramp {
-        0 => (230.0, 0.08, 0.06, 0.82), // grey stone, a little blue
+        0 => (140.0, 0.09, 0.06, 0.78), // grey stone, a little green (ed-slopper's reference: damp, mossy grey)
         1 => (28.0, 0.42, 0.07, 0.70),  // brown earth and wood
         2 => (14.0, 0.36, 0.08, 0.64),  // brick: a dusty, brownish red
         3 => (105.0, 0.40, 0.06, 0.66), // moss green
