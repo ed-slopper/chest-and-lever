@@ -42,8 +42,9 @@ Rows E4, E7, E8, E9, C8, C9. Code: `lac-rs/src/voxel.rs`, `palette.rs`, `texture
   The ambient light carries most of the scene (1100), so walls beyond the party's light stay readable; the
   party's own light is weak and near-white, and fog runs from 4 to 16 tiles. Matched by measuring: the
   reference's middle brightness is about 41 of 255, with nine pixels in ten between 30 and 50. A wall
-  torch's light sits close to the wall, so it throws a bright halo round the flame. Fog colour comes from a strip of palette colours, one per depth: our reading of R53 for an
-  underground game.
+  torch's light (140k) sits close to the wall, so it throws a warm halo round the flame, about twice the
+  room's brightness up close. Fog colour comes from a strip of palette colours, one per depth: our reading
+  of R53 for an underground game.
 - Particles (R63): spells, bolts and their impacts throw clouds of tiny glowing voxel cubes, with a light that
   fades with them; a hit monster sheds a puff of dark debris. Time stands still between actions (R27, R64), and
   so do particles: they hang in mid-air until the next action plays. Arrows fly as thin grey shafts and

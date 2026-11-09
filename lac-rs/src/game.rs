@@ -34,7 +34,7 @@ pub const EYE: f32 = 0.75 * CELL_H;
 /// Light, in Bevy's physical units (lumens, cd/m²) at its default camera exposure. OURS: the party's lantern is
 /// bright near and gone by ten tiles; torches light a room; a little ambient keeps the far dark readable.
 pub const PARTY_LIGHT: f32 = 100_000.0;
-pub const TORCH_LIGHT: f32 = 280_000.0;
+pub const TORCH_LIGHT: f32 = 140_000.0;
 pub const AMBIENT: f32 = 1100.0;
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Default)]
