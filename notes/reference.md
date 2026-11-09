@@ -25,6 +25,8 @@ ed-slopper/wren; the long-form write-up with pictures is the research report in 
 | R9 | "A game made by humans for humans" | 2025-08-07 | [post](https://x.com/notch/status/1953582943705964882) | 1 | confirmed |
 | R10 | Idea: ship it with a licence to make your own games in the same engine, as modding support | 2025-08-12 | [post](https://x.com/notch/status/1955344970916958598) | 1 | confirmed (idea only) |
 | R11 | Chosen over a Minecraft spiritual successor after a poll; he called successors "sad nostalgia dumps" | 2025-01-07 | [post](https://x.com/notch/status/1876630234025677104), [GamesRadar](https://www.gamesradar.com/games/minecraft/notch-cancels-the-minecraft-2-he-announced-days-prior-because-spiritual-successors-are-always-kinda-sad-nostalgia-dumps/) | 1 | confirmed |
+| R66 | "Not given up yet": still working on it, joking that the goal is to beat Half-Life 3 to market | 2025-11-11 | [post](https://x.com/notch/status/1988337408291860539) | 1 | confirmed |
+| R67 | He might try AI ("vibe") coding, because hiring programmers is hard, for the dull tools the game needs: a map editor, a node graph visualizer; not for the game itself. Quoted from a post of 2026-07-21 that we have not found ourselves | 2026-07-22 | [bunpav](https://bunpav.com/blog/notch-vibe-coding-reversal-levers-and-chests) | 3 | unconfirmed (R3 later says the game is mostly AI-written) |
 
 ## Genre and design
 
@@ -84,6 +86,7 @@ ed-slopper/wren; the long-form write-up with pictures is the research report in 
 |---|---|---|---|---|---|
 | R50 | Screen-space ambient occlusion (SSAO) on the dungeon; screen-space reflections discussed | 2024-05-27 | [Techopse](https://www.techopse.com/notch-continues-to-tease-his-next-game-project/) | 2 | confirmed |
 | R51 | A raytraced voxel renderer; its glitch pictures came from rendering back faces instead of front faces | 2025-02 | [80.lv](https://80.lv/articles/minecraft-creator-notch-offers-a-look-at-his-new-upcoming-game) | 2 | confirmed |
+| R65 | How the SSAO is made: the occlusion is sampled with dithering, the noise is removed with a blur that respects normals and distance, and an artificial dither is laid on top again | 2024-05-30 | [80.lv](https://80.lv/articles/development-updates-on-minecraft-creator-s-next-game) | 2 | confirmed |
 | R52 | Voxel fractals shown as engine work | 2025-02-28 | [80.lv](https://80.lv/articles/notch-continues-working-on-his-new-game-sharing-even-more-wip-screenshots) | 2 | confirmed |
 | R53 | Sky colours from an artist-controlled lookup texture, chosen over computing Rayleigh scattering | 2025-01-07 | [post](https://x.com/notch/status/1876630234025677104) | 1 | confirmed |
 | R54 | Palette cycling | 2026-10-10 | [post](https://x.com/notch/status/2108907604953137305) | 1 | confirmed |

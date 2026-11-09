@@ -27,6 +27,7 @@ as a reference board. Newest first. Add new finds as rows; say what each shows s
 | 2024-09-03 | **First gameplay clip**: party, time frozen without input, speed-up with queued actions | [post](https://x.com/notch/status/1831060458822127943) |
 | 2024-08-03 | Screens with AI placeholder portraits and icons | [post](https://x.com/notch/status/1819802388959764541) |
 | 2024-07-25 | Photo of his early design notes (minimap) | [post](https://x.com/notch/status/1816516091457470859) |
+| 2024-05-30 | 80.lv gallery of the May 2024 screens: dithered SSAO, the random test level (R47, R65) | [80.lv](https://80.lv/articles/development-updates-on-minecraft-creator-s-next-game) |
 | 2024-05-27 | Dungeon with SSAO on | [post](https://twitter.com/notch/status/1794923238625300523) |
 | 2024-05-07 | A joke "totally legit ad" | [post](https://x.com/notch/status/1787909983696539997) |
 | 2024-04-03 | The placeholder screenshot, explained | [post](https://twitter.com/notch/status/1775349676679840103) |
