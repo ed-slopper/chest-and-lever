@@ -6,7 +6,7 @@
 //! `--replay <file>` play a recording back (board row F4), `--test-level` the code-built test level (R47).
 //! For testing: `--do "[StepForward, Jump]"` queue actions (RON) once the run starts, `--shot <file>@<secs>`
 //! save a screenshot after that many seconds (repeatable), `--quit-after <secs>`, `--spawn a,b,c` stand monsters
-//! of those kinds in a row on the test level (to look at their models).
+//! of those kinds in a row on the test level (to look at their models), `--give a,b` put those items in the pack.
 
 mod audio;
 mod game;
@@ -52,6 +52,8 @@ pub struct StartRun {
     pub at: Option<(lac_sim::IVec3, lac_sim::Dir)>,
     /// Monsters to stand in a row on the test level, for looking at their models.
     pub spawn: Vec<String>,
+    /// Items to put in the pack at the start (for testing): `--give wand_fire,potion_healing`.
+    pub give: Vec<String>,
     pub script: Vec<lac_sim::Action>,
 }
 
@@ -177,6 +179,14 @@ fn start_run(mut commands: Commands, mut start: ResMut<StartRun>, content: Res<C
         Sim::new(&seed, options, c)
     };
     let mut sim = sim;
+    for id in start.give.drain(..) {
+        if sim.content.items.contains_key(&id) {
+            let mut it = lac_sim::levelgen::make_item(&sim.content, &id, 1, &mut lac_sim::rng::Mt19937::new(7));
+            it.known = true;
+            it.cursed = false;
+            sim.state.pack.push(it);
+        }
+    }
     if let Some(d) = start.depth.take() {
         // testing: start deeper
         let lvl = lac_sim::levelgen::generate(&sim.content, sim.state.seed, d, sim.state.options);
@@ -274,6 +284,10 @@ fn parse_args(start: &mut StartRun, cap: &mut Capture) -> Option<Screen> {
             }
             "--depth" if i + 1 < args.len() => {
                 start.depth = args[i + 1].parse().ok();
+                i += 1;
+            }
+            "--give" if i + 1 < args.len() => {
+                start.give = args[i + 1].split(',').map(|s| s.trim().to_string()).collect();
                 i += 1;
             }
             "--spawn" if i + 1 < args.len() => {

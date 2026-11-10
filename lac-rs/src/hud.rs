@@ -559,7 +559,7 @@ pub fn on_click(mut click: On<PointerClick>, q: Query<&Clickable>, game: Option<
             let held = game.sim.state.party[i].equip.get(&slot).is_some_and(|it| lac_sim::State::holdable(&game.sim.content, it));
             if primary && held {
                 // a held potion, scroll or wand: use it, for this member (R63)
-                game.push(Action::UseHeld { member: i as u8 });
+                game.push(Action::UseHeld { member: i as u8, main: slot == Slot::Weapon });
             } else if primary {
                 // a list of what can go here: from the pack, or from someone else (R63)
                 game.picker = Some((i, slot));
@@ -583,7 +583,7 @@ pub fn on_click(mut click: On<PointerClick>, q: Query<&Clickable>, game: Option<
             let member = i as u8;
             match from {
                 PickFrom::Pack(k) => game.push(Action::Equip { member, index: k as u16 }),
-                PickFrom::Hold(k) => game.push(Action::Hold { member, index: k as u16 }),
+                PickFrom::Hold(k) => game.push(Action::Hold { member, index: k as u16, main: slot == Slot::Weapon }),
                 PickFrom::Member(j) => {
                     // off them into the pack (it lands at the end), then onto this member
                     let at = game.sim.state.pack.len() as u16;
@@ -806,23 +806,44 @@ fn picker(p: &mut ChildSpawnerCommands, game: &Game, hud: &mut HudImages, images
     let m = &s.party[i];
     let fits = |it: &lac_sim::item::Item| sim.content.item(&it.def).kind.slot() == Some(slot);
     line(p, format!("{}'s {}", m.name, slot.name()), GOLD, 18.0);
-    let row = |p: &mut ChildSpawnerCommands, icon: Option<Handle<Image>>, text: String, colour: Color, from: PickFrom| {
+    // each item row wears its rarity, as in the pack: a tinted, glowing frame round the icon and the name in
+    // the tier's colour (grey, blue, purple, orange)
+    let row = |p: &mut ChildSpawnerCommands, icon: Option<(Handle<Image>, u8)>, text: String, colour: Color, from: PickFrom| {
+        let tier = icon.as_ref().map(|i| i.1).unwrap_or(0);
+        let tc = tier_colour(tier);
+        let colour = if tier > 0 { tc } else { colour };
         p.spawn((Node { flex_direction: FlexDirection::Row, column_gap: px(8), align_items: AlignItems::Center, padding: UiRect::all(px(3)), ..default() }, BackgroundColor(Color::srgba(1.0, 1.0, 1.0, 0.04)), Clickable::Pick(from)))
             .with_children(|r| {
                 match icon {
-                    Some(h) => {
-                        r.spawn((ImageNode::new(h), Node { width: px(28), height: px(28), ..default() }));
+                    Some((h, _)) => {
+                        let (edge, fill) = if tier > 0 {
+                            let (a, b) = (SLOT_FILL.to_srgba(), tc.to_srgba());
+                            let k = 0.3;
+                            (tc, Color::srgb(a.red + (b.red - a.red) * k, a.green + (b.green - a.green) * k, a.blue + (b.blue - a.blue) * k))
+                        } else {
+                            (SLOT_EDGE, SLOT_FILL)
+                        };
+                        let mut frame = r.spawn((Node { width: px(34), height: px(34), padding: UiRect::all(px(2)), ..default() }, BackgroundColor(edge)));
+                        if tier > 0 {
+                            frame.insert(bevy::ui::BoxShadow::new(tc.with_alpha(0.35 + 0.15 * tier as f32), Val::ZERO, Val::ZERO, px(1), px(4.0 + 2.0 * tier as f32)));
+                        }
+                        frame.with_children(|f| {
+                            f.spawn((Node { width: percent(100), height: percent(100), padding: UiRect::all(px(1)), ..default() }, BackgroundColor(fill))).with_children(|w| {
+                                w.spawn((ImageNode::new(h), Node { width: percent(100), height: percent(100), ..default() }));
+                            });
+                        });
                     }
                     None => {
-                        r.spawn(Node { width: px(28), height: px(28), ..default() });
+                        r.spawn(Node { width: px(34), height: px(34), ..default() });
                     }
                 }
                 r.spawn((Text::new(text), font(14.0), TextColor(colour)));
             });
     };
+    let with_tier = |h: Handle<Image>, it: &lac_sim::item::Item| Some((h, tier_of(sim, it)));
     if let Some(it) = m.equip.get(&slot) {
         let ic = icon_handle(hud, images, sim, it, vision);
-        row(p, Some(ic), format!("Take off {} (to the pack)", sim.item_name(it)), INK, PickFrom::TakeOff);
+        row(p, with_tier(ic, it), format!("Take off {} (to the pack)", sim.item_name(it)), INK, PickFrom::TakeOff);
     }
     line(p, "From the pack", GOLD, 14.0);
     let mut any = false;
@@ -830,21 +851,23 @@ fn picker(p: &mut ChildSpawnerCommands, game: &Game, hud: &mut HudImages, images
         if fits(it) {
             any = true;
             let ic = icon_handle(hud, images, sim, it, vision);
-            row(p, Some(ic), sim.item_name(it), INK, PickFrom::Pack(k));
+            row(p, with_tier(ic, it), sim.item_name(it), INK, PickFrom::Pack(k));
         }
     }
     if !any {
         line(p, "  nothing that fits", DIM, 13.0);
     }
-    if slot == Slot::Shield {
-        // the second hand can also hold a potion, scroll or wand, to use with a click (R63)
-        line(p, "To hold in hand (click it on the card to use it)", GOLD, 14.0);
+    if slot == Slot::Shield || slot == Slot::Weapon {
+        // either hand can also hold a potion, scroll or wand, to use with a click (R63); a wand in the main hand
+        // also fires when the member attacks (OURS)
+        let tip = if slot == Slot::Weapon { "To hold in hand (click it to use it; a wand also fires when they attack)" } else { "To hold in hand (click it on the card to use it)" };
+        line(p, tip, GOLD, 14.0);
         let mut any = false;
         for (k, it) in s.pack.iter().enumerate() {
             if lac_sim::State::holdable(&sim.content, it) {
                 any = true;
                 let ic = icon_handle(hud, images, sim, it, vision);
-                row(p, Some(ic), sim.item_name(it), INK, PickFrom::Hold(k));
+                row(p, with_tier(ic, it), sim.item_name(it), INK, PickFrom::Hold(k));
             }
         }
         if !any {
@@ -860,7 +883,7 @@ fn picker(p: &mut ChildSpawnerCommands, game: &Game, hud: &mut HudImages, images
         if let Some(it) = other.equip.get(&slot) {
             any = true;
             let ic = icon_handle(hud, images, sim, it, vision);
-            row(p, Some(ic), format!("{} (from {})", sim.item_name(it), other.name), INK, PickFrom::Member(j));
+            row(p, with_tier(ic, it), format!("{} (from {})", sim.item_name(it), other.name), INK, PickFrom::Member(j));
         }
     }
     if !any {

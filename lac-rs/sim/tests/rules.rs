@@ -391,10 +391,86 @@ fn a_member_can_hold_a_potion_and_drink_it() {
     s.state.party[2].hp = 2;
     let k = s.state.pack.iter().position(|i| i.def == "potion_healing").unwrap() as u16;
     let before = s.state.pack.len();
-    s.tick(Action::Hold { member: 2, index: k });
+    s.tick(Action::Hold { member: 2, index: k, main: false });
     assert_eq!(s.state.pack.len(), before - 1);
     assert_eq!(s.state.tick, 0, "taking it in hand is free");
-    s.tick(Action::UseHeld { member: 2 });
+    s.tick(Action::UseHeld { member: 2, main: false });
     assert!(s.state.party[2].hp > 2, "Odile drank it");
     assert!(!s.state.party[2].equip.contains_key(&lac_sim::content::Slot::Shield));
+}
+
+#[test]
+fn a_fire_bolt_flies_a_tile_per_step() {
+    // OURS (ed-slopper's ask): a wand's bolt appears in front, then moves a tile per step of the party's time
+    let mut s = test_sim();
+    let c = s.content.clone();
+    let rat = lac_sim::levelgen::spawn(&mut s.state.level, &c, "rat", IVec3::new(5, 1, 9), &mut lac_sim::rng::Mt19937::new(1), RunOptions::default());
+    let r = s.state.level.monsters.iter().position(|m| m.id == rat).unwrap();
+    s.state.level.monsters[r].sleep = 60_000;
+    let hp = s.state.level.monsters[r].hp;
+    let mut wand = lac_sim::item::Item::new("wand_fire");
+    wand.charges = 3;
+    s.state.pack.push(wand);
+    let index = (s.state.pack.len() - 1) as u16;
+    s.tick(Action::TurnLeft);
+    s.tick(Action::TurnLeft);
+    assert_eq!(s.state.facing, Dir::South);
+    s.tick(Action::UseItem { member: 3, index });
+    assert_eq!(s.state.level.missiles.len(), 1, "the bolt is in flight");
+    assert_eq!(s.state.level.missiles[0].pos, IVec3::new(5, 1, 6), "right in front of the party");
+    s.tick(Action::TurnRight);
+    assert_eq!(s.state.level.missiles[0].pos, IVec3::new(5, 1, 6), "turning takes no time, so the bolt waits");
+    s.tick(Action::Wait);
+    assert_eq!(s.state.level.missiles[0].pos, IVec3::new(5, 1, 7));
+    s.tick(Action::Wait);
+    assert_eq!(s.state.level.missiles[0].pos, IVec3::new(5, 1, 8));
+    assert_eq!(s.state.level.monsters.iter().find(|m| m.id == rat).map(|m| m.hp), Some(hp), "not hit yet");
+    let ev = s.tick(Action::Wait);
+    assert!(ev.iter().any(|e| matches!(e, Event::MonsterHurt { id, .. } if *id == rat) || matches!(e, Event::MonsterDied { id, .. } if *id == rat)));
+    assert!(s.state.level.missiles.is_empty(), "spent on the rat");
+}
+
+#[test]
+fn walking_onto_items_picks_them_up_but_not_dropped_ones() {
+    // OURS (ed-slopper's ask): stepping onto a tile takes what lies there, except what the player dropped
+    let mut s = test_sim();
+    let ahead = IVec3::new(5, 1, 4);
+    s.state.level.items.insert(ahead, vec![lac_sim::item::Item::new("potion_healing")]);
+    let n = s.state.pack.len();
+    s.tick(Action::StepForward);
+    assert_eq!(s.state.pos, ahead);
+    assert_eq!(s.state.pack.len(), n + 1, "picked up on arrival");
+    assert!(!s.state.level.items.contains_key(&ahead));
+    // drop it, step off and back on: it stays on the floor
+    s.tick(Action::Drop { index: n as u16 });
+    assert_eq!(s.state.pack.len(), n);
+    s.tick(Action::StepBack);
+    s.tick(Action::StepForward);
+    assert_eq!(s.state.pos, ahead);
+    assert_eq!(s.state.pack.len(), n, "a dropped item is not taken by walking over it");
+    assert_eq!(s.state.level.items.get(&ahead).map(|v| v.len()), Some(1));
+    // Pick up still takes it, and once carried it is ordinary again
+    s.tick(Action::PickUp);
+    assert_eq!(s.state.pack.len(), n + 1);
+    assert!(!s.state.pack[n].dropped);
+}
+
+#[test]
+fn a_wand_in_the_main_hand_fires_on_attack() {
+    // OURS (ed-slopper's ask): magic items can be held, and a wand in the main hand is the member's attack
+    let mut s = test_sim();
+    let mut wand = lac_sim::item::Item::new("wand_fire");
+    wand.charges = 2;
+    s.state.pack.push(wand);
+    let index = (s.state.pack.len() - 1) as u16;
+    let n = s.state.pack.len();
+    s.tick(Action::Hold { member: 0, index, main: true });
+    let held = s.state.party[0].equip.get(&lac_sim::content::Slot::Weapon).map(|w| w.def.clone());
+    assert_eq!(held.as_deref(), Some("wand_fire"));
+    assert_eq!(s.state.pack.len(), n, "the old weapon went to the pack in the wand's place");
+    s.tick(Action::TurnLeft);
+    s.tick(Action::TurnLeft);
+    s.tick(Action::AttackWith { member: 0 });
+    assert_eq!(s.state.level.missiles.len(), 1, "the attack zapped the wand");
+    assert_eq!(s.state.party[0].equip[&lac_sim::content::Slot::Weapon].charges, 1);
 }

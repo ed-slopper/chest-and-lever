@@ -209,6 +209,18 @@ pub struct MonsterView {
     pub depth: u8,
 }
 
+/// A bolt in flight (sim `Missile`): it glides a tile per party action and waits in between, glowing.
+#[derive(Component)]
+pub struct MissileView {
+    pub id: u32,
+    pub depth: u8,
+    pub from: Vec3,
+    pub to: Vec3,
+    pub fire: bool,
+    /// Spent: it bursts once it reaches `to`.
+    pub gone: bool,
+}
+
 #[derive(Component)]
 pub struct Bolt {
     pub from: Vec3,
@@ -757,6 +769,7 @@ pub fn playback(
     mut anim: ResMut<Anim>,
     cam: Single<&Transform, With<PartyCam>>,
     mut monsters: Query<(Entity, &mut MonsterView)>,
+    mut missiles: Query<&mut MissileView>,
     sounds: Res<Sounds>,
     settings: Res<Settings>,
     time: Res<Time>,
@@ -820,8 +833,47 @@ pub fn playback(
     let content = game.sim.content.clone();
     let facing = Vec3::new(0.0, 0.0, -1.0);
     let fwd = Quat::from_rotation_y(start_yaw) * facing;
+    let depth = game.sim.state.level.depth;
+    // bolts fired this action: not spawned yet, so kept here until the end of the batch
+    let mut fresh: Vec<MissileView> = Vec::new();
+    let mut moved: Vec<u32> = Vec::new();
+    let bolt_at = |p: SIVec3| tile_pos(p) + Vec3::Y * EYE * 0.85;
     for e in &events {
         match e {
+            Event::MissileMoved { id, from, to, fire } => {
+                let b = bolt_at(*to);
+                moved.push(*id);
+                if let Some(mut mv) = missiles.iter_mut().find(|m| m.id == *id && m.depth == depth && !m.gone) {
+                    mv.from = mv.to;
+                    mv.to = b;
+                } else if let Some(mv) = fresh.iter_mut().find(|m| m.id == *id) {
+                    mv.to = b;
+                } else {
+                    // it leaves from the party's hands, just ahead of the eye
+                    let a = bolt_at(*from) + (b - bolt_at(*from)).normalize_or_zero() * 0.3 - Vec3::Y * 0.1;
+                    fresh.push(MissileView { id: *id, depth, from: a, to: b, fire: *fire, gone: false });
+                    if *fire {
+                        audio::play(&mut commands, &sounds, Sfx::Fire, vol);
+                    }
+                }
+                base = base.max(0.25);
+            }
+            Event::MissileGone { id, at, fire } => {
+                if let Some(mut mv) = missiles.iter_mut().find(|m| m.id == *id && m.depth == depth && !m.gone) {
+                    // spent where it stood (against a wall, or a monster walked in): burst there now
+                    if !moved.contains(id) {
+                        mv.to = bolt_at(*at);
+                        mv.from = mv.to;
+                    }
+                    mv.gone = true;
+                } else if let Some(mv) = fresh.iter_mut().find(|m| m.id == *id) {
+                    mv.gone = true;
+                } else {
+                    let trail: &[Glow] = if *fire { &[Glow::Fire, Glow::Ember] } else { &[Glow::White, Glow::Frost] };
+                    burst(&mut commands, &particles, bolt_at(*at), trail, 60, 2.2, true);
+                }
+                base = base.max(0.25);
+            }
             Event::PartyMoved { to, kind, from } => {
                 let eye = tile_pos(*to) + Vec3::Y * EYE;
                 match kind {
@@ -1055,6 +1107,25 @@ pub fn playback(
             mv.yaw_from = mv.yaw_to;
         }
     }
+    // bolts that didn't move this action hold still; new ones appear
+    for mut mv in missiles.iter_mut() {
+        if !moved.contains(&mv.id) && !mv.gone {
+            mv.from = mv.to;
+        }
+    }
+    let core = GLOWS.iter().position(|(g, _, _)| *g == Glow::Fire).unwrap_or(0);
+    let frost = GLOWS.iter().position(|(g, _, _)| *g == Glow::Frost).unwrap_or(0);
+    for mv in fresh {
+        let (light, mat) = if mv.fire { (Color::srgb(1.0, 0.5, 0.2), core) } else { (Color::srgb(0.5, 0.7, 1.0), frost) };
+        commands.spawn((
+            Transform::from_translation(mv.from).with_scale(Vec3::splat(0.1)),
+            Mesh3d(particles.cube.clone()),
+            MeshMaterial3d(particles.mats[mat].clone()),
+            PointLight { color: light, intensity: TORCH_LIGHT, range: 4.0, ..default() },
+            mv,
+            WorldEntity,
+        ));
+    }
 }
 
 fn monster_pos(p: SIVec3, flies: bool) -> Vec3 {
@@ -1062,13 +1133,15 @@ fn monster_pos(p: SIVec3, flies: bool) -> Vec3 {
 }
 
 /// Advance the camera, the monsters and the bolts along this tick's animation.
+#[allow(clippy::too_many_arguments, clippy::type_complexity)]
 pub fn animate(
     mut commands: Commands,
     time: Res<Time>,
     mut anim: ResMut<Anim>,
-    mut cam: Single<&mut Transform, (With<PartyCam>, Without<MonsterView>, Without<Bolt>)>,
-    mut monsters: Query<(Entity, &mut MonsterView, &mut Transform), (Without<PartyCam>, Without<Bolt>)>,
-    mut bolts: Query<(Entity, &Bolt, &mut Transform), (Without<PartyCam>, Without<MonsterView>)>,
+    mut cam: Single<&mut Transform, (With<PartyCam>, Without<MonsterView>, Without<Bolt>, Without<MissileView>)>,
+    mut monsters: Query<(Entity, &mut MonsterView, &mut Transform), (Without<PartyCam>, Without<Bolt>, Without<MissileView>)>,
+    mut bolts: Query<(Entity, &Bolt, &mut Transform), (Without<PartyCam>, Without<MonsterView>, Without<MissileView>)>,
+    mut flying: Query<(Entity, &MissileView, &mut Transform), (Without<PartyCam>, Without<MonsterView>, Without<Bolt>)>,
     mut game: ResMut<Game>,
     pa: Res<ParticleAssets>,
 ) {
@@ -1153,6 +1226,29 @@ pub fn animate(
         }
         if t >= 1.0 {
             burst(&mut commands, &pa, b.to, trail, 60, 2.2, true);
+            commands.entity(e).despawn();
+        }
+    }
+    // bolts in flight: glide with the action, spin and spark while they wait, burst when spent
+    let state = &game.sim.state;
+    for (e, mv, mut tr) in flying.iter_mut() {
+        let trail: &[Glow] = if mv.fire { &[Glow::Fire, Glow::Ember] } else { &[Glow::White, Glow::Frost] };
+        if !mv.gone && (mv.depth != state.level.depth || !state.level.missiles.iter().any(|m| m.id == mv.id)) {
+            // a stale view (a new level, a load)
+            commands.entity(e).despawn();
+            continue;
+        }
+        let k = if mv.from == mv.to { 1.0 } else { ease };
+        tr.translation = mv.from.lerp(mv.to, k) + Vec3::Y * (time_s * 5.0 + mv.id as f32).sin() * 0.03;
+        tr.rotation = Quat::from_rotation_y(time_s * 4.0) * Quat::from_rotation_x(time_s * 3.0);
+        tr.scale = Vec3::splat(0.1 + 0.025 * (time_s * 13.0).sin());
+        if anim.active && mv.from != mv.to {
+            burst(&mut commands, &pa, tr.translation, trail, 2, 0.3, false);
+        } else if (time_s * 12.0).fract() < dt * 12.0 {
+            burst(&mut commands, &pa, tr.translation, trail, 1, 0.25, false);
+        }
+        if mv.gone && (!anim.active || t >= 1.0) {
+            burst(&mut commands, &pa, mv.to, trail, 60, 2.2, true);
             commands.entity(e).despawn();
         }
     }

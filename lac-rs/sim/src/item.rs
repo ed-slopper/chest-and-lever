@@ -24,11 +24,15 @@ pub struct Item {
     /// Gold amount, for gold.
     #[serde(default)]
     pub amount: u32,
+    /// The player put it down: walking over it leaves it there, only Pick up takes it (OURS, ed-slopper's ask:
+    /// items are picked up by walking onto them, except ones you dropped). Left out of saves while false.
+    #[serde(default, skip_serializing_if = "std::ops::Not::not")]
+    pub dropped: bool,
 }
 
 impl Item {
     pub fn new(def: &str) -> Item {
-        Item { def: def.to_string(), enchant: 0, cursed: false, known: true, charges: 0, amount: 0 }
+        Item { def: def.to_string(), enchant: 0, cursed: false, known: true, charges: 0, amount: 0, dropped: false }
     }
 }
 

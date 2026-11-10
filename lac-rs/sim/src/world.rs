@@ -345,6 +345,36 @@ pub struct Level {
     /// The player's marks on the automap (R60), by column.
     #[serde(default, with = "pairs")]
     pub notes: BTreeMap<(i32, i32), u8>,
+    /// Bolts in flight (wands, scrolls, Spark). Left out of saves while empty, so runs that fire none keep
+    /// their old state hash.
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub missiles: Vec<Missile>,
+    #[serde(default, skip_serializing_if = "is_zero")]
+    pub next_missile_id: u32,
+}
+
+fn is_zero(n: &u32) -> bool {
+    *n == 0
+}
+
+/// A bolt flying down a line, a tile at a time (ed-slopper's ask, 2026-11-09).
+/// OURS: it moves one tile per 30 ticks of the party's time (one step), like a monster of normal speed, so it
+/// waits while the party turns or stands still; the record says nothing of projectiles.
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+pub struct Missile {
+    pub id: u32,
+    pub pos: IVec3,
+    pub dir: Dir,
+    pub dmg: i32,
+    pub fire: bool,
+    /// Lightning: passes through every monster, hitting each once.
+    pub pierce: bool,
+    /// Tiles it may still fly.
+    pub left: u8,
+    /// Ticks saved toward its next tile.
+    pub energy: u32,
+    /// Monsters it has hurt already (by id), so a piercing bolt hits each once.
+    pub hit: Vec<u32>,
 }
 
 /// The look and contents of a stretch of depths. REF R42 (crypts, tombs), R46 (caves, unconfirmed); the rest
@@ -416,6 +446,8 @@ impl Level {
             start_facing: Dir::North,
             explored: BTreeSet::new(),
             notes: BTreeMap::new(),
+            missiles: Vec::new(),
+            next_missile_id: 0,
         }
     }
 

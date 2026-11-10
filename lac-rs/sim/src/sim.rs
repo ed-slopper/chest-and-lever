@@ -11,7 +11,7 @@ use crate::levelgen;
 use crate::monster;
 use crate::party::{self, Attr, Character, Class, Spell};
 use crate::rng::{self, Mt19937, Streams};
-use crate::world::{Cell, Feature, KeyKind, Level, LinkEffect, Trap};
+use crate::world::{Cell, Feature, KeyKind, Level, LinkEffect, Missile, Trap};
 use serde::{Deserialize, Serialize};
 use std::collections::VecDeque;
 
@@ -23,6 +23,8 @@ pub const PACK_SIZE: usize = 24;
 pub const TICKS_PER_SECOND: u64 = 60;
 /// OURS: the world's slow rhythms (poison, healing, timers) beat once per round of half a second.
 pub const TICKS_PER_ROUND: u64 = 30;
+/// OURS: a bolt in flight moves a tile per this many ticks: one step of the party's.
+pub const MISSILE_STEP_TICKS: u32 = 30;
 /// OURS: a monster acts each time its energy reaches this; it gains its `speed` every tick, so speed 12 acts
 /// once a round.
 const ACT_COST: i32 = 12 * TICKS_PER_ROUND as i32;
@@ -71,11 +73,21 @@ pub enum Action {
     PickUp,
     /// Free: swap two members (front row is 0 and 1).
     Swap { a: u8, b: u8 },
-    /// Free: a member takes a potion, scroll or wand from the pack into their second hand (R63: items held on
-    /// the character), to use with UseHeld.
-    Hold { member: u8, index: u16 },
-    /// Use what the member holds in their second hand: drink, read or zap it.
-    UseHeld { member: u8 },
+    /// Free: a member takes a potion, scroll or wand from the pack into their second hand, or into their main
+    /// hand if `main` (R63: items held on the character), to use with UseHeld. OURS (ed-slopper's ask): a wand
+    /// held in the main hand fires when that member attacks.
+    Hold {
+        member: u8,
+        index: u16,
+        #[serde(default)]
+        main: bool,
+    },
+    /// Use what the member holds in their second hand (or main hand, if `main`): drink, read or zap it.
+    UseHeld {
+        member: u8,
+        #[serde(default)]
+        main: bool,
+    },
     /// Free: put a mark on the automap at the party's tile (0 takes it away). R60: a minimap the player can
     /// make notes on.
     Note { mark: u8 },
@@ -111,6 +123,10 @@ pub enum Event {
     Spell { member: u8, spell: Spell },
     /// Something flies down a line: a spell bolt (fire or not) or an arrow.
     Bolt { from: IVec3, to: IVec3, fire: bool, arrow: bool },
+    /// A bolt in flight moved a tile (or appeared, `from` being the party's tile).
+    MissileMoved { id: u32, from: IVec3, to: IVec3, fire: bool },
+    /// A bolt in flight is spent: it hit something, flew its range or met a wall, at `at`.
+    MissileGone { id: u32, at: IVec3, fire: bool },
     CellsChanged(Vec<IVec3>),
     FeatureChanged(IVec3),
     ItemsChanged(IVec3),
@@ -259,6 +275,8 @@ impl Sim {
         let c = &self.content;
         let s = &mut self.state;
         let depth_before = s.level.depth;
+        let first_new_missile = s.level.next_missile_id;
+        let pos_before = s.pos;
         let took_time = s.party_act(c, a, &mut ev);
         // REF R64: time passes only by the action's ticks; a turn is animated but costs none
         let mut cost = if took_time { action_ticks(&a) } else { 0 };
@@ -283,11 +301,16 @@ impl Sim {
                 return ev;
             }
         }
+        if s.pos != pos_before && s.outcome == Outcome::Playing {
+            s.auto_pick_up(c, &mut ev);
+        }
+        s.advance_missiles(c, cost, first_new_missile, &mut ev);
         for round in before / TICKS_PER_ROUND + 1..=s.tick / TICKS_PER_ROUND {
             s.status(c, round, &mut ev);
         }
         if s.outcome == Outcome::Playing {
             s.monsters_act(c, cost, &mut ev);
+            s.missiles_meet_walkers(c, &mut ev);
         }
         s.level.monsters.retain(|m| m.hp > 0);
         s.check_lost(&mut ev);
@@ -386,7 +409,8 @@ impl State {
             Action::Unequip { member, slot } => self.unequip(c, member as usize, slot, ev),
             Action::Drop { index } => {
                 if (index as usize) < self.pack.len() {
-                    let it = self.pack.remove(index as usize);
+                    let mut it = self.pack.remove(index as usize);
+                    it.dropped = true;
                     say(ev, format!("Dropped {}.", self.knowledge.name(c, &it)));
                     self.level.items.entry(self.pos).or_default().push(it);
                     ev.push(Event::ItemsChanged(self.pos));
@@ -398,11 +422,11 @@ impl State {
                 self.pick_up(c, ev);
                 false
             }
-            Action::Hold { member, index } => {
-                self.hold(c, member as usize, index as usize, ev);
+            Action::Hold { member, index, main } => {
+                self.hold(c, member as usize, index as usize, if main { Slot::Weapon } else { Slot::Shield }, ev);
                 false
             }
-            Action::UseHeld { member } => self.use_held(c, member as usize, ev),
+            Action::UseHeld { member, main } => self.use_held(c, member as usize, if main { Slot::Weapon } else { Slot::Shield }, ev),
             Action::Note { mark } => {
                 let key = (self.pos.x, self.pos.z);
                 if mark == 0 {
@@ -627,6 +651,8 @@ impl State {
                 }
                 _ if self.pack.len() < PACK_SIZE => {
                     say(ev, format!("Got {}.", self.knowledge.name(c, &it)));
+                    let mut it = it;
+                    it.dropped = false;
                     self.pack.push(it);
                 }
                 _ => left.push(it),
@@ -638,6 +664,53 @@ impl State {
         }
         ev.push(Event::ItemsChanged(self.pos));
         ev.push(Event::PackChanged);
+    }
+
+    /// Walking onto a tile picks up what lies there, except what the player dropped (OURS, ed-slopper's ask).
+    /// Gold always comes along; the rest while the pack has room.
+    fn auto_pick_up(&mut self, c: &Content, ev: &mut Vec<Event>) {
+        let here = self.pos;
+        let Some(items) = self.level.items.get(&here) else { return };
+        if items.iter().all(|it| it.dropped) {
+            return;
+        }
+        let items = self.level.items.remove(&here).unwrap_or_default();
+        let mut left = Vec::new();
+        let mut took = false;
+        let mut full = false;
+        for it in items {
+            if it.dropped {
+                left.push(it);
+                continue;
+            }
+            match c.item(&it.def).kind {
+                ItemKind::Gold { .. } => {
+                    self.gold += it.amount;
+                    self.stats.gold_found += it.amount;
+                    say(ev, format!("{} gold.", it.amount));
+                    took = true;
+                }
+                _ if self.pack.len() < PACK_SIZE => {
+                    say(ev, format!("Picked up {}.", self.knowledge.name(c, &it)));
+                    self.pack.push(it);
+                    took = true;
+                }
+                _ => {
+                    full = true;
+                    left.push(it);
+                }
+            }
+        }
+        if full {
+            say(ev, "The pack is full: something stays on the floor.");
+        }
+        if !left.is_empty() {
+            self.level.items.insert(here, left);
+        }
+        if took {
+            ev.push(Event::ItemsChanged(here));
+            ev.push(Event::PackChanged);
+        }
     }
 
     fn give(&mut self, c: &Content, it: Item, ev: &mut Vec<Event>) {
@@ -1063,6 +1136,13 @@ impl State {
         let front = self.level.monster_at(self.front());
         let mut anyone = false;
         for i in self.living().filter(|i| only.is_none_or(|o| o == *i)).collect::<Vec<_>>() {
+            // OURS (ed-slopper's ask): a wand in the main hand is zapped instead of a blow
+            if self.party[i].weapon().is_some_and(|w| matches!(c.item(&w.def).kind, ItemKind::Wand { .. })) {
+                if self.outcome == Outcome::Playing && self.use_held(c, i, Slot::Weapon, ev) {
+                    anyone = true;
+                }
+                continue;
+            }
             let (to_hit, dmg, bonus, reach, ranged) = self.party[i].attack_profile(c);
             let target = if ranged {
                 self.first_in_line(6)
@@ -1332,28 +1412,95 @@ impl State {
         true
     }
 
-    /// A bolt down the facing line: the first monster (or every one, if `pierce`) takes `dmg`.
+    /// A bolt down the facing line. It appears on the tile in front at once and then flies a tile per step
+    /// of the party's time (`advance_missiles`), hurting the first monster it meets (or every one, if
+    /// `pierce`). OURS: ed-slopper's ask (2026-11-09), so a bolt can be watched, dodged around and outrun.
     fn bolt(&mut self, c: &Content, range: i32, dmg: i32, fire: bool, pierce: bool, ev: &mut Vec<Event>) {
-        let targets = if pierce { self.all_in_line(range) } else { self.first_in_line(range).into_iter().collect() };
-        let mut end = self.pos;
-        for _ in 0..range {
-            let n = end + self.facing.delta();
-            if !self.level.open(n) {
-                break;
+        let id = self.level.next_missile_id;
+        self.level.next_missile_id += 1;
+        let mut m = Missile { id, pos: self.pos, dir: self.facing, dmg, fire, pierce, left: range.clamp(1, 255) as u8, energy: 0, hit: Vec::new() };
+        if self.missile_step(c, &mut m, ev) {
+            self.level.missiles.push(m);
+        }
+    }
+
+    /// One tile of a bolt's flight. False when it is spent.
+    fn missile_step(&mut self, c: &Content, m: &mut Missile, ev: &mut Vec<Event>) -> bool {
+        let n = m.pos + m.dir.delta();
+        if m.left == 0 || !self.level.open(n) {
+            self.missile_gone(m, ev);
+            return false;
+        }
+        let from = m.pos;
+        m.pos = n;
+        m.left -= 1;
+        ev.push(Event::MissileMoved { id: m.id, from, to: n, fire: m.fire });
+        if !self.missile_hits(c, m, ev) {
+            return false;
+        }
+        if m.left == 0 {
+            self.missile_gone(m, ev);
+            return false;
+        }
+        true
+    }
+
+    /// A monster on the bolt's tile takes its damage, once. False when that spent the bolt.
+    fn missile_hits(&mut self, c: &Content, m: &mut Missile, ev: &mut Vec<Event>) -> bool {
+        let Some(i) = self.level.monster_at(m.pos) else { return true };
+        let mid = self.level.monsters[i].id;
+        if m.hit.contains(&mid) {
+            return true;
+        }
+        m.hit.push(mid);
+        self.damage_monster(c, i, m.dmg, ev);
+        if m.pierce {
+            return true;
+        }
+        self.missile_gone(m, ev);
+        false
+    }
+
+    fn missile_gone(&mut self, m: &Missile, ev: &mut Vec<Event>) {
+        ev.push(Event::MissileGone { id: m.id, at: m.pos, fire: m.fire });
+        if m.hit.is_empty() {
+            say(ev, if m.fire { "The fire bolt gutters out." } else { "The bolt hits nothing." });
+        }
+    }
+
+    /// Bolts fly on by the time the party's action took: a tile per 30 ticks (a step), like a monster of
+    /// normal speed. Bolts with an id of `first_new` or more were fired this tick and wait for the next.
+    fn advance_missiles(&mut self, c: &Content, ticks: u64, first_new: u32, ev: &mut Vec<Event>) {
+        let flying = std::mem::take(&mut self.level.missiles);
+        let mut keep = Vec::new();
+        for mut m in flying {
+            let mut alive = true;
+            if m.id < first_new {
+                m.energy += ticks as u32;
+                while alive && m.energy >= MISSILE_STEP_TICKS {
+                    m.energy -= MISSILE_STEP_TICKS;
+                    alive = self.missile_step(c, &mut m, ev);
+                }
             }
-            end = n;
-        }
-        if let Some(&t) = targets.last()
-            && !pierce {
-                end = self.level.monsters[t].pos;
+            if alive {
+                keep.push(m);
             }
-        ev.push(Event::Bolt { from: self.pos, to: end, fire, arrow: false });
-        if targets.is_empty() {
-            say(ev, "The bolt hits nothing.");
         }
-        for t in targets {
-            self.damage_monster(c, t, dmg, ev);
+        keep.append(&mut self.level.missiles);
+        self.level.missiles = keep;
+    }
+
+    /// A monster that walked into a bolt is hit by it.
+    fn missiles_meet_walkers(&mut self, c: &Content, ev: &mut Vec<Event>) {
+        let flying = std::mem::take(&mut self.level.missiles);
+        let mut keep = Vec::new();
+        for mut m in flying {
+            if self.missile_hits(c, &mut m, ev) {
+                keep.push(m);
+            }
         }
+        keep.append(&mut self.level.missiles);
+        self.level.missiles = keep;
     }
 
     // ---------------------------------------------------------------- items
@@ -1419,34 +1566,38 @@ impl State {
         matches!(c.item(&it.def).kind, ItemKind::Potion { .. } | ItemKind::Scroll { .. } | ItemKind::Wand { .. })
     }
 
-    fn hold(&mut self, c: &Content, i: usize, index: usize, ev: &mut Vec<Event>) {
+    /// Put a holdable item from the pack into a hand: `Slot::Shield` (the second hand) or `Slot::Weapon` (the
+    /// main hand, in place of the weapon, which goes back to the pack).
+    fn hold(&mut self, c: &Content, i: usize, index: usize, hand: Slot, ev: &mut Vec<Event>) {
         if index >= self.pack.len() || i >= self.party.len() || !self.party[i].alive() || !State::holdable(c, &self.pack[index]) {
             return;
         }
-        if let Some(w) = self.party[i].weapon()
+        if hand == Slot::Shield
+            && let Some(w) = self.party[i].weapon()
             && matches!(c.item(&w.def).kind, ItemKind::Weapon { two_handed: true, .. }) {
                 say(ev, format!("{} needs both hands for the {}.", self.party[i].name, self.knowledge.name(c, w)));
                 return;
             }
-        if self.party[i].equip.get(&Slot::Shield).is_some_and(|s| s.cursed) {
+        if self.party[i].equip.get(&hand).is_some_and(|s| s.cursed) {
             say(ev, "The hand is held by something cursed.");
             return;
         }
         let it = self.pack.remove(index);
-        if let Some(old) = self.party[i].equip.remove(&Slot::Shield) {
+        if let Some(old) = self.party[i].equip.remove(&hand) {
             self.pack.push(old);
         }
-        say(ev, format!("{} holds the {} ready.", self.party[i].name, self.knowledge.name(c, &it)));
-        self.party[i].equip.insert(Slot::Shield, it);
+        let which = if hand == Slot::Weapon { "in the main hand" } else { "ready" };
+        say(ev, format!("{} holds the {} {which}.", self.party[i].name, self.knowledge.name(c, &it)));
+        self.party[i].equip.insert(hand, it);
         ev.push(Event::PackChanged);
     }
 
-    fn use_held(&mut self, c: &Content, i: usize, ev: &mut Vec<Event>) -> bool {
+    fn use_held(&mut self, c: &Content, i: usize, hand: Slot, ev: &mut Vec<Event>) -> bool {
         let Some(m) = self.party.get(i) else { return false };
         if !m.alive() {
             return false;
         }
-        let Some(it) = m.equip.get(&Slot::Shield).cloned() else { return false };
+        let Some(it) = m.equip.get(&hand).cloned() else { return false };
         if !State::holdable(c, &it) {
             return false;
         }
@@ -1454,7 +1605,7 @@ impl State {
         let name = m.name.clone();
         match &def.kind {
             ItemKind::Potion { effect } | ItemKind::Scroll { effect } => {
-                self.party[i].equip.remove(&Slot::Shield);
+                self.party[i].equip.remove(&hand);
                 let verb = if matches!(def.kind, ItemKind::Potion { .. }) { "drinks" } else { "reads" };
                 say(ev, format!("{name} {verb} the {}.", self.knowledge.name(c, &it)));
                 self.knowledge.identified.insert(it.def.clone());
@@ -1466,7 +1617,7 @@ impl State {
                     say(ev, format!("{name} waves the wand. Nothing: it is empty."));
                     return true;
                 }
-                if let Some(w) = self.party[i].equip.get_mut(&Slot::Shield) {
+                if let Some(w) = self.party[i].equip.get_mut(&hand) {
                     w.charges -= 1;
                 }
                 say(ev, format!("{name} zaps the {}.", self.knowledge.name(c, &it)));
